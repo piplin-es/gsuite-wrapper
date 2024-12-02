@@ -13,6 +13,7 @@ from mcp.types import (
     TextContent,
     LoggingLevel,
 )
+import json
 from . import gauth
 from http.server import BaseHTTPRequestHandler,HTTPServer
 from urllib.parse import (
@@ -83,7 +84,11 @@ def setup_oauth2():
     else:
         if credentials.access_token_expired:
             logger.error("credentials expired. try refresh")
-            gauth.refresh(credentials=credentials)
+
+        # this call refreshes access token
+        user_info = gauth.get_user_info(credentials=credentials)
+        logging.error(f"User info: {json.dumps(user_info)}")
+        gauth.store_credentials(credentials=credentials)
 
 
 app = Server("mcp-gsuite")
@@ -105,6 +110,7 @@ add_tool_handler(tools_gmail.QueryEmailsToolHandler())
 add_tool_handler(tools_gmail.GetEmailByIdToolHandler())
 add_tool_handler(tools_gmail.CreateDraftToolHandler())
 add_tool_handler(tools_gmail.DeleteDraftToolHandler())
+add_tool_handler(tools_gmail.ReplyEmailToolHandler())
 
 @app.list_tools()
 async def list_tools() -> list[Tool]:
@@ -135,8 +141,9 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
 
 async def main():
 
-    #setup_oauth2()
+    setup_oauth2()
     logger.error("Handled oauth. start MCP server")
+
 
     # Import here to avoid issues with event loops
     from mcp.server.stdio import stdio_server

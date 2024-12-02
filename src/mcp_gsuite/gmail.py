@@ -22,51 +22,58 @@ class GmailService():
             parse_body (bool): Whether to parse and include the message body (default: False)
         
         Returns:
-            dict: Parsed message containing id, subject, sender, and optionally body
+            dict: Parsed message containing comprehensive metadata
             None: If parsing fails
         """
         try:
-            #logging.error("----------------")
-            #import json
-            #logging.error(json.dumps(txt))
-            #logging.error("----------------")
             message_id = txt.get('id')
+            thread_id = txt.get('threadId')
             payload = txt.get('payload', {})
             headers = payload.get('headers', [])
 
-            # Extract headers
-            subject = ""
-            sender = ""
-            date = ""
-            cc = ""
-            for header in headers:
-                name = header.get('name', '')
-                if name == 'Subject':
-                    subject = header.get('value', '')
-                elif name == 'From':
-                    sender = header.get('value', '')
-                if name == 'Date':
-                    date = header.get('value', '')
-                if name == 'Cc':
-                    cc = header.get('value', '')
-
-            result = {
-                "id": message_id,
-                "date": date,
-                "subject": subject,
-                "from": sender,
-                "ccs": cc,
-                "labels": txt.get('labelIds'),
-                "snippet": txt.get('snippet'),
+            metadata = {
+                'id': message_id,
+                'threadId': thread_id,
+                'historyId': txt.get('historyId'),
+                'internalDate': txt.get('internalDate'),
+                'sizeEstimate': txt.get('sizeEstimate'),
+                'labelIds': txt.get('labelIds', []),
+                'snippet': txt.get('snippet'),
             }
 
-            # Parse body if requested
+            for header in headers:
+                name = header.get('name', '').lower()
+                value = header.get('value', '')
+                
+                if name == 'subject':
+                    metadata['subject'] = value
+                elif name == 'from':
+                    metadata['from'] = value
+                elif name == 'to':
+                    metadata['to'] = value
+                elif name == 'date':
+                    metadata['date'] = value
+                elif name == 'cc':
+                    metadata['cc'] = value
+                elif name == 'bcc':
+                    metadata['bcc'] = value
+                elif name == 'message-id':
+                    metadata['message_id'] = value
+                elif name == 'in-reply-to':
+                    metadata['in_reply_to'] = value
+                elif name == 'references':
+                    metadata['references'] = value
+                elif name == 'delivered-to':
+                    metadata['delivered_to'] = value
+
             if parse_body:
                 body = self._extract_body(payload)
                 if body:
-                    result["body"] = body
+                    metadata['body'] = body
 
-            return result
+                metadata['mimeType'] = payload.get('mimeType')
+
+            return metadata
 
         except Exception as e:
             logging.error(f"Error parsing message: {str(e)}")
@@ -244,3 +251,75 @@ class GmailService():
             logging.error(f"Error deleting draft {draft_id}: {str(e)}")
             logging.error(traceback.format_exc())
             return False
+        
+    def create_reply(self, original_message: dict, reply_body: str, send: bool = False, cc: list[str] = None) -> dict | None:
+        """
+        Create a reply to an email message and either send it or save as draft.
+        
+        Args:
+            original_message (dict): The original message data (as returned by get_email_by_id)
+            reply_body (str): Body content of the reply
+            send (bool): If True, sends the reply immediately. If False, saves as draft.
+            cc (list[str], optional): List of email addresses to CC
+            
+        Returns:
+            dict: Sent message or draft data if successful
+            None: If operation fails
+        """
+        try:
+            to_address = original_message.get('from')
+            if not to_address:
+                raise ValueError("Could not determine original sender's address")
+            
+            subject = original_message.get('subject', '')
+            if not subject.lower().startswith('re:'):
+                subject = f"Re: {subject}"
+
+
+            original_date = original_message.get('date', '')
+            original_from = original_message.get('from', '')
+            original_body = original_message.get('body', '')
+        
+            full_reply_body = (
+                f"{reply_body}\n\n"
+                f"On {original_date}, {original_from} wrote:\n"
+                f"> {original_body.replace('\n', '\n> ') if original_body else '[No message body]'}"
+            )
+
+            mime_message = MIMEText(full_reply_body)
+            mime_message['to'] = to_address
+            mime_message['subject'] = subject
+            if cc:
+                mime_message['cc'] = ','.join(cc)
+                
+            mime_message['In-Reply-To'] = original_message.get('id')
+            mime_message['References'] = original_message.get('id')
+            
+            raw_message = base64.urlsafe_b64encode(mime_message.as_bytes()).decode('utf-8')
+            
+            message_body = {
+                'raw': raw_message,
+                'threadId': original_message.get('threadId')  # Ensure it's added to the same thread
+            }
+
+            if send:
+                # Send the reply immediately
+                result = self.service.users().messages().send(
+                    userId='me',
+                    body=message_body
+                ).execute()
+            else:
+                # Save as draft
+                result = self.service.users().drafts().create(
+                    userId='me',
+                    body={
+                        'message': message_body
+                    }
+                ).execute()
+            
+            return result
+            
+        except Exception as e:
+            logging.error(f"Error {'sending' if send else 'drafting'} reply: {str(e)}")
+            logging.error(traceback.format_exc())
+            return None

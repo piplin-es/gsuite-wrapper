@@ -43,7 +43,10 @@ class QueryEmailsToolHandler(toolhandler.ToolHandler):
     def get_tool_description(self) -> Tool:
         return Tool(
             name=self.name,
-            description="Query Gmail emails based on an optional search query. Returns emails in reverse chronological order (newest first).",
+            description="""Query Gmail emails based on an optional search query. 
+            Returns emails in reverse chronological order (newest first).
+            Returns metadata such as subject and also a short summary of the content.
+            """,
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -133,7 +136,11 @@ class CreateDraftToolHandler(toolhandler.ToolHandler):
     def get_tool_description(self) -> Tool:
         return Tool(
             name=self.name,
-            description="Creates a draft email message in Gmail with specified recipient, subject, body, and optional CC recipients.",
+            description="""Creates a draft email message from scratch in Gmail with specified recipient, subject, body, and optional CC recipients.
+            
+            This tool does NOT include any previous message content, so if you want to create a draft reply, use the reply_gmail_email tool
+            with send=False."
+            """,
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -220,5 +227,80 @@ class DeleteDraftToolHandler(toolhandler.ToolHandler):
             TextContent(
                 type="text",
                 text="Successfully deleted draft" if success else f"Failed to delete draft with ID: {args['draft_id']}"
+            )
+        ]
+    
+class ReplyEmailToolHandler(toolhandler.ToolHandler):
+    def __init__(self):
+        super().__init__("reply_gmail_email")
+
+    def get_tool_description(self) -> Tool:
+        return Tool(
+            name=self.name,
+            description="Creates a reply to an existing Gmail email message and either sends it or saves as draft.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "original_message_id": {
+                        "type": "string",
+                        "description": "The ID of the Gmail message to reply to"
+                    },
+                    "reply_body": {
+                        "type": "string",
+                        "description": "The body content of your reply message"
+                    },
+                    "send": {
+                        "type": "boolean",
+                        "description": "If true, sends the reply immediately. If false, saves as draft.",
+                        "default": False
+                                    },
+                    "cc": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Optional list of email addresses to CC on the reply"
+                    }
+                },
+                "required": ["original_message_id", "reply_body"]
+            }
+        )
+
+    def run_tool(self, args: dict) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
+        if not all(key in args for key in ["original_message_id", "reply_body"]):
+            raise RuntimeError("Missing required arguments: original_message_id and reply_body")
+
+        gmail_service = gmail.GmailService()
+        
+        # First get the original message to extract necessary information
+        original_message = gmail_service.get_email_by_id(args["original_message_id"])
+        if original_message is None:
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Failed to retrieve original message with ID: {args['original_message_id']}"
+                )
+            ]
+
+        # Create and send/draft the reply
+        result = gmail_service.create_reply(
+            original_message=original_message,
+            reply_body=args["reply_body"],
+            send=args.get("send", False),
+            cc=args.get("cc")
+        )
+
+        if result is None:
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Failed to {'send' if args.get('send', True) else 'draft'} reply email"
+                )
+            ]
+
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(result, indent=2)
             )
         ]

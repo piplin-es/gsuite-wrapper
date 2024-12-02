@@ -23,7 +23,8 @@ CLIENTSECRETS_LOCATION = './.gauth.json'
 REDIRECT_URI = 'http://localhost:4100/code'
 SCOPES = [
     "openid",
-    "https://mail.google.com/"
+    "https://mail.google.com/",
+    "https://www.googleapis.com/auth/calendar"
 ]
 
 class GetCredentialsException(Exception):
@@ -49,10 +50,6 @@ class NoRefreshTokenException(GetCredentialsException):
 
 class NoUserIdException(Exception):
   """Error raised when no user ID could be retrieved."""
-
-
-def refresh(credentials: OAuth2Credentials):
-    credentials.refresh(Request())
 
 
 def get_stored_credentials() -> OAuth2Credentials | None:

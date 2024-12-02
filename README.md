@@ -4,13 +4,14 @@ MCP server to interact with Google.
 
 ## Example prompts
 
-Right now, this MCP server only supports gmail. It supports the following functions:
+Right now, this MCP server only supports gmail and calendar. It supports the following functions:
 
 - Retrieve my latest unread messages
-- Search my emails for XYZ
+- Search my emails from the Scrum Master
 - Retrieve all emails from accounting
 - Take the email about ABC and summarize it
 - Write a nice response to Alice's last email and upload a draft.
+- Reply to Bob's email with a Thank you note. Store it as draft
 
 ## Components
 
@@ -22,16 +23,19 @@ The server implements multiple tools to interact with G-Suite. Right now, the fo
 - Get email content (by id)
 - Create email draft
 - Delete draft (by id)
+- Reply to message (and optionally send it)
 
 ### Oauth2
 
 Gsuite requires OAuth2 authorization. So you need to setup an Oauth2 client in the Google Auth platform and copy the client id and client secret. 
-Make sure to allow at the following two scopes: 
+
+Right now, the server requires the following scopes on auth:
 
 - `openid`
 - `https://mail.google.com/`
+- `https://www.googleapis.com/auth/calendar`
 
-(Note: This should be finetuned.)
+(Note: This should be finetuned as they are way too broad..)
 
 Then create a `.gauth.json` in your working directory:
 
