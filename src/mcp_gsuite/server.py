@@ -112,6 +112,8 @@ add_tool_handler(tools_gmail.CreateDraftToolHandler())
 add_tool_handler(tools_gmail.DeleteDraftToolHandler())
 add_tool_handler(tools_gmail.ReplyEmailToolHandler())
 
+add_tool_handler(tools_calendar.GetCalendarEventsToolHandler())
+
 @app.list_tools()
 async def list_tools() -> list[Tool]:
     """List available tools."""

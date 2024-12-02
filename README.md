@@ -6,6 +6,7 @@ MCP server to interact with Google.
 
 Right now, this MCP server only supports gmail and calendar. It supports the following functions:
 
+1. Gmail
 - Retrieve my latest unread messages
 - Search my emails from the Scrum Master
 - Retrieve all emails from accounting
@@ -13,17 +14,25 @@ Right now, this MCP server only supports gmail and calendar. It supports the fol
 - Write a nice response to Alice's last email and upload a draft.
 - Reply to Bob's email with a Thank you note. Store it as draft
 
+2. Calendar
+- Get my calendar events for this week
+
+
 ## Components
 
 ### Tools
 
 The server implements multiple tools to interact with G-Suite. Right now, the following tools are implemented:
 
+1. Gmail
 - Query emails from gmail (supports full G-mail query API)
 - Get email content (by id)
 - Create email draft
 - Delete draft (by id)
 - Reply to message (and optionally send it)
+
+2. Calendar
+- Get calendar events
 
 ### Oauth2
 
