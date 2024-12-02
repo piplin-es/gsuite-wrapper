@@ -141,7 +141,7 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
 
 async def main():
 
-    setup_oauth2()
+    #setup_oauth2()
     logger.error("Handled oauth. start MCP server")
 
 

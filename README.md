@@ -51,9 +51,8 @@ Then create a `.gauth.json` in your working directory:
 }
 ```
 
-When the server starts the first time, it will redirect you to Google and ask for your credentials, scope, etc. After a successful login, it stores the credentials in a local file called `oauth2creds.json`.
-
-Note: This behaviour will very likely change! 
+When you first execute one of the tools, a browser will open, redirect you to Google and ask for your credentials, scope, etc. After a successful login, it stores the credentials in a local file called `oauth2creds.json`. From that one,
+the refresh token will be used.
 
 ## Quickstart
 
