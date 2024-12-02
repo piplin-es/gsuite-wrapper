@@ -4,49 +4,61 @@ MCP server to interact with Google.
 
 ## Example prompts
 
-Right now, this MCP server only supports gmail and calendar. It supports the following functions:
+Right now, this MCP server supports Gmail and Calendar integration with the following capabilities:
 
 1. Gmail
-- Retrieve my latest unread messages
-- Search my emails from the Scrum Master
-- Retrieve all emails from accounting
-- Take the email about ABC and summarize it
-- Write a nice response to Alice's last email and upload a draft.
-- Reply to Bob's email with a Thank you note. Store it as draft
+- Get your Gmail user information
+- Query emails with flexible search (e.g., unread, from specific senders, date ranges, with attachments)
+- Retrieve complete email content by ID
+- Create new draft emails with recipients, subject, body and CC options
+- Delete draft emails
+- Reply to existing emails (can either send immediately or save as draft)
 
 2. Calendar
-- Get my calendar events for this week
+- Get calendar events within specified time ranges
+- Create calendar events with:
+  - Title, start/end times
+  - Optional location and description
+  - Optional attendees
+  - Custom timezone support
+  - Notification preferences
+- Delete calendar events
 
+Example prompts you can try:
+- "Show me my unread emails from the last 2 days"
+- "Get the full content of email ID xyz123"
+- "Draft an email to alice@example.com about the project update"
+- "Reply to Bob's last email and save it as a draft"
+- "Show my calendar events for next week"
+- "Create a team meeting for tomorrow at 2 PM"
+- "Cancel the event scheduled for Friday"
 
-## Components
+## Quickstart
 
-### Tools
+### Install
 
-The server implements multiple tools to interact with G-Suite. Right now, the following tools are implemented:
+#### Oauth 2
 
-1. Gmail
-- Query emails from gmail (supports full G-mail query API)
-- Get email content (by id)
-- Create email draft
-- Delete draft (by id)
-- Reply to message (and optionally send it)
+Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps to set up authentication:
 
-2. Calendar
-- Get calendar events
+1. Create OAuth2 Credentials:
+   - Go to the [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select an existing one
+   - Enable the Gmail API and Google Calendar API for your project
+   - Go to "Credentials" → "Create Credentials" → "OAuth client ID"
+   - Select "Desktop app" or "Web application" as the application type
+   - Configure the OAuth consent screen with required information
+   - Add authorized redirect URIs (include `http://localhost:4100/code` for local development)
 
-### Oauth2
+2. Required OAuth2 Scopes:
+   ```json
+   [
+     "openid",
+     "https://mail.google.com/",
+     "https://www.googleapis.com/auth/calendar"
+   ]
 
-Gsuite requires OAuth2 authorization. So you need to setup an Oauth2 client in the Google Auth platform and copy the client id and client secret. 
-
-Right now, the server requires the following scopes on auth:
-
-- `openid`
-- `https://mail.google.com/`
-- `https://www.googleapis.com/auth/calendar`
-
-(Note: This should be finetuned as they are way too broad..)
-
-Then create a `.gauth.json` in your working directory:
+3. Then create a `.gauth.json` in your working directory:
 
 ```
 {
@@ -60,12 +72,8 @@ Then create a `.gauth.json` in your working directory:
 }
 ```
 
-When you first execute one of the tools, a browser will open, redirect you to Google and ask for your credentials, scope, etc. After a successful login, it stores the credentials in a local file called `oauth2creds.json`. From that one,
+Note: When you first execute one of the tools, a browser will open, redirect you to Google and ask for your credentials, scope, etc. After a successful login, it stores the credentials in a local file called `oauth2creds.json`. From that one,
 the refresh token will be used.
-
-## Quickstart
-
-### Install
 
 #### Claude Desktop
 

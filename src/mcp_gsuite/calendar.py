@@ -79,3 +79,83 @@ class CalendarService():
             logging.error(f"Error retrieving calendar events: {str(e)}")
             logging.error(traceback.format_exc())
             return []
+        
+    def create_event(self, summary: str, start_time: str, end_time: str, 
+                location: str = None, description: str = None, 
+                attendees: list = None, send_notifications: bool = True,
+                timezone: str = None) -> dict:
+        """
+        Create a new calendar event.
+        
+        Args:
+            summary (str): Title of the event
+            start_time (str): Start time in RFC3339 format
+            end_time (str): End time in RFC3339 format
+            location (str, optional): Location of the event
+            description (str, optional): Description of the event
+            attendees (list, optional): List of attendee email addresses
+            send_notifications (bool): Whether to send notifications to attendees
+            timezone (str, optional): Timezone for the event (e.g. 'America/New_York')
+            
+        Returns:
+            dict: Created event data or None if creation fails
+        """
+        try:
+            # Prepare event data
+            event = {
+                'summary': summary,
+                'start': {
+                    'dateTime': start_time,
+                    'timeZone': timezone or 'UTC',
+                },
+                'end': {
+                    'dateTime': end_time,
+                    'timeZone': timezone or 'UTC',
+                }
+            }
+            
+            # Add optional fields if provided
+            if location:
+                event['location'] = location
+            if description:
+                event['description'] = description
+            if attendees:
+                event['attendees'] = [{'email': email} for email in attendees]
+                
+            # Create the event
+            created_event = self.service.events().insert(
+                calendarId='primary',
+                body=event,
+                sendNotifications=send_notifications
+            ).execute()
+            
+            return created_event
+            
+        except Exception as e:
+            logging.error(f"Error creating calendar event: {str(e)}")
+            logging.error(traceback.format_exc())
+            return None
+        
+    def delete_event(self, event_id: str, send_notifications: bool = True) -> bool:
+        """
+        Delete a calendar event by its ID.
+        
+        Args:
+            event_id (str): The ID of the event to delete
+            send_notifications (bool): Whether to send cancellation notifications to attendees
+            
+        Returns:
+            bool: True if deletion was successful, False otherwise
+        """
+        try:
+            self.service.events().delete(
+                calendarId='primary',
+                eventId=event_id,
+                sendNotifications=send_notifications
+            ).execute()
+            return True
+            
+        except Exception as e:
+            logging.error(f"Error deleting calendar event {event_id}: {str(e)}")
+            logging.error(traceback.format_exc())
+            return False

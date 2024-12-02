@@ -62,3 +62,125 @@ class GetCalendarEventsToolHandler(toolhandler.ToolHandler):
                 text=json.dumps(events, indent=2)
             )
         ]
+
+class CreateCalendarEventToolHandler(toolhandler.ToolHandler):
+    def __init__(self):
+        super().__init__("create_calendar_event")
+
+    def get_tool_description(self) -> Tool:
+        return Tool(
+            name=self.name,
+            description="Creates a new event in the user's primary Google Calendar.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "summary": {
+                        "type": "string",
+                        "description": "Title of the event"
+                    },
+                    "location": {
+                        "type": "string",
+                        "description": "Location of the event (optional)"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Description or notes for the event (optional)"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "description": "Start time in RFC3339 format (e.g. 2024-12-01T10:00:00Z)"
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "description": "End time in RFC3339 format (e.g. 2024-12-01T11:00:00Z)"
+                    },
+                    "attendees": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "List of attendee email addresses (optional)"
+                    },
+                    "send_notifications": {
+                        "type": "boolean",
+                        "description": "Whether to send notifications to attendees",
+                        "default": True
+                    },
+                    "timezone": {
+                        "type": "string",
+                        "description": "Timezone for the event (e.g. 'America/New_York'). Defaults to UTC if not specified."
+                    }
+                },
+                "required": ["summary", "start_time", "end_time"]
+            }
+        )
+
+    def run_tool(self, args: dict) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
+        # Validate required arguments
+        required = ["summary", "start_time", "end_time"]
+        if not all(key in args for key in required):
+            raise RuntimeError(f"Missing required arguments: {', '.join(required)}")
+
+        calendar_service = calendar.CalendarService()
+        event = calendar_service.create_event(
+            summary=args["summary"],
+            start_time=args["start_time"],
+            end_time=args["end_time"],
+            location=args.get("location"),
+            description=args.get("description"),
+            attendees=args.get("attendees", []),
+            send_notifications=args.get("send_notifications", True),
+            timezone=args.get("timezone")
+        )
+
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(event, indent=2)
+            )
+        ]
+    
+class DeleteCalendarEventToolHandler(toolhandler.ToolHandler):
+    def __init__(self):
+        super().__init__("delete_calendar_event")
+
+    def get_tool_description(self) -> Tool:
+        return Tool(
+            name=self.name,
+            description="Deletes an event from the user's Google Calendar by its event ID.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "event_id": {
+                        "type": "string",
+                        "description": "The ID of the calendar event to delete"
+                    },
+                    "send_notifications": {
+                        "type": "boolean",
+                        "description": "Whether to send cancellation notifications to attendees",
+                        "default": True
+                    }
+                },
+                "required": ["event_id"]
+            }
+        )
+
+    def run_tool(self, args: dict) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
+        if "event_id" not in args:
+            raise RuntimeError("Missing required argument: event_id")
+
+        calendar_service = calendar.CalendarService()
+        success = calendar_service.delete_event(
+            event_id=args["event_id"],
+            send_notifications=args.get("send_notifications", True)
+        )
+
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps({
+                    "success": success,
+                    "message": "Event successfully deleted" if success else "Failed to delete event"
+                }, indent=2)
+            )
+        ]
