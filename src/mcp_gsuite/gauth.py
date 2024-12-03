@@ -5,7 +5,7 @@ from oauth2client.client import (
     OAuth2Credentials,
     Credentials,
 )
-from apiclient.discovery import build
+from googleapiclient.discovery import build
 import httplib2
 from google.auth.transport.requests import Request
 
@@ -126,8 +126,8 @@ def get_user_info(credentials):
     user_info = None
     try:
         user_info = user_info_service.userinfo().get().execute()
-    except httplib2.errors.HttpError as e:
-        logging.error('An error occurred: %s', e)
+    except Exception as e:
+        logging.error(f'An error occurred: {e}')
     if user_info and user_info.get('id'):
         return user_info
     else:

@@ -1,4 +1,4 @@
-from apiclient.discovery import build
+from googleapiclient.discovery import build
 from . import gauth
 import logging
 import traceback
@@ -111,10 +111,10 @@ class CalendarService():
             return []
         
     def create_event(self, summary: str, start_time: str, end_time: str, 
-                location: str = None, description: str = None, 
-                attendees: list = None, send_notifications: bool = True,
-                timezone: str = None,
-                calendar_id : str = 'primary') -> dict:
+                location: str | None = None, description: str | None = None, 
+                attendees: list | None = None, send_notifications: bool = True,
+                timezone: str | None = None,
+                calendar_id : str = 'primary') -> dict | None:
         """
         Create a new calendar event.
         

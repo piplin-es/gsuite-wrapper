@@ -13,7 +13,7 @@ from . import toolhandler
 
 CALENDAR_ID_ARG="__calendar_id__"
 
-def get_calendar_id_arg_schema() -> str:
+def get_calendar_id_arg_schema() -> dict[str, str]:
     return {
         "type": "string",
         "description": """Optional ID of the specific agenda for which you are executing this action.

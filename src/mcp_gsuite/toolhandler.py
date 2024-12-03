@@ -15,7 +15,7 @@ class ToolHandler():
         self.name = tool_name
 
     def get_supported_emails(self) -> list[str]:
-        return os.getenv("GOOGLE_EMAILS").split(":")
+        return os.getenv("GOOGLE_EMAILS", "").split(":")
     
     def get_supported_emails_tool_text(self) -> str:
         return f"""This tool requires a authorized google email for {USER_ID_ARG} argument. You can choose one of: {', '.join(self.get_supported_emails())}"""

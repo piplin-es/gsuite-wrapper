@@ -1,4 +1,4 @@
-from apiclient.discovery import build 
+from googleapiclient.discovery import build 
 from . import gauth
 import logging
 import base64
@@ -189,7 +189,7 @@ class GmailService():
             logging.error(traceback.format_exc())
             return None
         
-    def create_draft(self, to: str, subject: str, body: str, cc: list[str] = None) -> dict | None:
+    def create_draft(self, to: str, subject: str, body: str, cc: list[str] | None = None) -> dict | None:
         """
         Create a draft email message.
         
@@ -262,7 +262,7 @@ class GmailService():
             logging.error(traceback.format_exc())
             return False
         
-    def create_reply(self, original_message: dict, reply_body: str, send: bool = False, cc: list[str] = None) -> dict | None:
+    def create_reply(self, original_message: dict, reply_body: str, send: bool = False, cc: list[str] | None = None) -> dict | None:
         """
         Create a reply to an email message and either send it or save as draft.
         
@@ -302,8 +302,8 @@ class GmailService():
             if cc:
                 mime_message['cc'] = ','.join(cc)
                 
-            mime_message['In-Reply-To'] = original_message.get('id')
-            mime_message['References'] = original_message.get('id')
+            mime_message['In-Reply-To'] = original_message.get('id', '')
+            mime_message['References'] = original_message.get('id', '')
             
             raw_message = base64.urlsafe_b64encode(mime_message.as_bytes()).decode('utf-8')
             

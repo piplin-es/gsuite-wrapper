@@ -284,7 +284,7 @@ class ReplyEmailToolHandler(toolhandler.ToolHandler):
         # Create and send/draft the reply
         result = gmail_service.create_reply(
             original_message=original_message,
-            reply_body=args["reply_body"],
+            reply_body=args.get("reply_body", ""),
             send=args.get("send", False),
             cc=args.get("cc")
         )

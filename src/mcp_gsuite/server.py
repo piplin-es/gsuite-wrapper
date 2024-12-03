@@ -11,7 +11,8 @@ import threading
 from mcp.types import (
     Tool,
     TextContent,
-    LoggingLevel,
+    ImageContent,
+    EmbeddedResource,
 )
 import json
 from . import gauth
@@ -75,7 +76,9 @@ def start_auth_flow(user_id: str):
 
 
 def setup_oauth2(user_id: str):
-    users = os.getenv("GOOGLE_EMAILS").split(":")
+    users = os.getenv("GOOGLE_EMAILS", "").split(":")
+    if len(users) == 0:
+        raise RuntimeError("No users specified in env var GOOGLE_EMAILS")
     if user_id not in users:
         raise RuntimeError(f"email: {user_id} not specified in ENV")
 
@@ -125,7 +128,7 @@ async def list_tools() -> list[Tool]:
 
 
 @app.call_tool()
-async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
+async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
     """Handle tool calls for command line run."""
     
     if not isinstance(arguments, dict):
@@ -134,7 +137,7 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent]:
     if toolhandler.USER_ID_ARG not in arguments:
         raise RuntimeError("user_id argument is missing in dictionary.")
 
-    setup_oauth2(user_id=arguments.get(toolhandler.USER_ID_ARG))
+    setup_oauth2(user_id=arguments.get(toolhandler.USER_ID_ARG, ""))
 
     tool_handler = get_tool_handler(name)
     if not tool_handler:
