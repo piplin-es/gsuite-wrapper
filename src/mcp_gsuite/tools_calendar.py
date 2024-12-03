@@ -17,7 +17,8 @@ def get_calendar_id_arg_schema() -> dict[str, str]:
     return {
         "type": "string",
         "description": """Optional ID of the specific agenda for which you are executing this action.
-                          If not known, it can be retrieved with the list_calendars tool""",
+                          If not provided, the default calendar is being used. 
+                          If not known, the specific calendar id can be retrieved with the list_calendars tool""",
         "default": "primary"
     }
 
@@ -29,7 +30,8 @@ class ListCalendarsToolHandler(toolhandler.ToolHandler):
     def get_tool_description(self) -> Tool:
         return Tool(
             name=self.name,
-            description="Lists all calendars accessible by the user.",
+            description="""Lists all calendars accessible by the user. 
+            Call it before any other tool whenever the user specifies a particular agenda (Family, Holidays, etc.).""",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -121,7 +123,7 @@ class CreateCalendarEventToolHandler(toolhandler.ToolHandler):
     def get_tool_description(self) -> Tool:
         return Tool(
             name=self.name,
-            description="Creates a new event in the user's primary Google Calendar.",
+            description="Creates a new event in a specified Google Calendar of the specified user.",
             inputSchema={
                 "type": "object",
                 "properties": {
