@@ -6,7 +6,6 @@ from mcp.types import (
     EmbeddedResource,
     LoggingLevel,
 )
-from . import gauth
 from . import gmail
 import json
 from . import toolhandler
