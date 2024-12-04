@@ -8,6 +8,7 @@ from oauth2client.client import (
 from googleapiclient.discovery import build
 import httplib2
 from google.auth.transport.requests import Request
+import os
 
 # Path to client_secrets.json which should contain a JSON document such as:
 #   {
@@ -64,7 +65,13 @@ def get_stored_credentials(user_id: str) -> OAuth2Credentials | None:
     Stored oauth2client.client.OAuth2Credentials if found, None otherwise.
     """
     try:
-        with open(_get_credential_filename(user_id=user_id), 'r') as f:
+
+        cred_file_path = _get_credential_filename(user_id=user_id)
+        if not os.path.exists(cred_file_path):
+            logging.warning("no stored credentials yet")
+            return None
+
+        with open(cred_file_path, 'r') as f:
             data = f.read()
             return Credentials.new_from_json(data)
     except Exception as e:
