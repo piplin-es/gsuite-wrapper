@@ -160,7 +160,8 @@ class GmailService():
             return parsed
             
         except Exception as e:
-            print(f"Error reading emails: {str(e)}")
+            logging.error(f"Error reading emails: {str(e)}")
+            logging.error(traceback.format_exc())
             return []
         
     def get_email_by_id(self, email_id: str) -> dict | None:

@@ -67,7 +67,7 @@ Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps
      "https://www.googleapis.com/auth/userinfo.email"
    ]
 
-3. Then create a `.gauth.json` in your working directory with client and account information
+3. Then create a `.gauth.json` in your working directory with client
 
 ```json
 {
@@ -77,13 +77,20 @@ Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps
         "redirect_uris": ["http://localhost:4100/code"],
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token"
-    },
+    }
+}
+```
+
+4. Create a `.accounts.json` file with account information
+
+```
+{
     "accounts": [
-      {
-        "email": "alice@bob.com",
-        "account_type": "personal",
-        "extra_info": "Additional info that you want to tell Claude: E.g. 'Contains Family Calendar'"
-      }
+        {
+            "email": "alice@bob.com",
+            "account_type": "personal",
+            "extra_info": "Additional info that you want to tell Claude: E.g. 'Contains Family Calendar'"
+        }
     ]
 }
 ```
@@ -178,5 +185,5 @@ Upon launching, the Inspector will display a URL that you can access in your bro
 You can also watch the server logs with this command:
 
 ```bash
-tail -n 20 -f ~/Library/Logs/Claude/mcp-server-mcp-obsidian.log
+tail -n 20 -f ~/Library/Logs/Claude/mcp-server-mcp-gsuite.log
 ```

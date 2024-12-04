@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from functools import lru_cache
 import subprocess
 from typing import Any
-import os
+import traceback
 from dotenv import load_dotenv
 from mcp.server import Server
 import threading
@@ -126,24 +126,23 @@ async def list_tools() -> list[Tool]:
 
 @app.call_tool()
 async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
-    """Handle tool calls for command line run."""
-    
-    if not isinstance(arguments, dict):
-        raise RuntimeError("arguments must be dictionary")
-    
-    if toolhandler.USER_ID_ARG not in arguments:
-        raise RuntimeError("user_id argument is missing in dictionary.")
+    try:        
+        if not isinstance(arguments, dict):
+            raise RuntimeError("arguments must be dictionary")
+        
+        if toolhandler.USER_ID_ARG not in arguments:
+            raise RuntimeError("user_id argument is missing in dictionary.")
 
-    setup_oauth2(user_id=arguments.get(toolhandler.USER_ID_ARG, ""))
+        setup_oauth2(user_id=arguments.get(toolhandler.USER_ID_ARG, ""))
 
-    tool_handler = get_tool_handler(name)
-    if not tool_handler:
-        raise ValueError(f"Unknown tool: {name}")
+        tool_handler = get_tool_handler(name)
+        if not tool_handler:
+            raise ValueError(f"Unknown tool: {name}")
 
-    try:
         return tool_handler.run_tool(arguments)
     except Exception as e:
-        logger.error(str(e))
+        logging.error(traceback.format_exc())
+        logging.error(f"Error during call_tool: str(e)")
         raise RuntimeError(f"Caught Exception. Error: {str(e)}")
 
 

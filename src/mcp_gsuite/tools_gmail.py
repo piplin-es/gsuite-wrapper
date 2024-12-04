@@ -124,8 +124,8 @@ class CreateDraftToolHandler(toolhandler.ToolHandler):
             name=self.name,
             description="""Creates a draft email message from scratch in Gmail with specified recipient, subject, body, and optional CC recipients.
             
-            This tool does NOT include any previous message content, so if you want to create a draft reply, use the reply_gmail_email tool
-            with send=False."
+            Do NOT use this tool when you want to draft or send a REPLY to an existing message. This tool does NOT include any previous message content. Use the reply_gmail_email tool
+            with send=False instead."
             """,
             inputSchema={
                 "type": "object",
@@ -231,7 +231,10 @@ class ReplyEmailToolHandler(toolhandler.ToolHandler):
     def get_tool_description(self) -> Tool:
         return Tool(
             name=self.name,
-            description="Creates a reply to an existing Gmail email message and either sends it or saves as draft.",
+            description="""Creates a reply to an existing Gmail email message and either sends it or saves as draft.
+
+            Use this tool if you want to draft a reply. Use the 'cc' argument if you want to perform a "reply all".
+            """,
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -248,7 +251,7 @@ class ReplyEmailToolHandler(toolhandler.ToolHandler):
                         "type": "boolean",
                         "description": "If true, sends the reply immediately. If false, saves as draft.",
                         "default": False
-                                    },
+                    },
                     "cc": {
                         "type": "array",
                         "items": {

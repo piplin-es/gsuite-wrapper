@@ -34,7 +34,7 @@ class AccountInfo(pydantic.BaseModel):
         return f"""Account for email: {self.email} of type: {self.account_type}. Extra info for: {self.extra_info}"""
 
 def get_account_info() -> list[AccountInfo]:
-    with open(CLIENTSECRETS_LOCATION) as f:
+    with open('./.accounts.json') as f:
         data = json.load(f)
         accounts = data.get("accounts", [])
         return [AccountInfo.model_validate(acc) for acc in accounts]
