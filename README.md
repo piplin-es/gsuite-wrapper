@@ -67,7 +67,7 @@ Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps
      "https://www.googleapis.com/auth/userinfo.email"
    ]
 
-3. Then create a `.gauth.json` in your working directory:
+3. Then create a `.gauth.json` in your working directory with client and account information
 
 ```json
 {
@@ -77,20 +77,20 @@ Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps
         "redirect_uris": ["http://localhost:4100/code"],
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token"
-    }
+    },
+    "accounts": [
+      {
+        "email": "alice@bob.com",
+        "account_type": "personal",
+        "extra_info": "Additional info that you want to tell Claude: E.g. 'Contains Family Calendar'"
+      }
+    ]
 }
 ```
 
-4. Create a `.env` file in your working directory (or pass via MCP config)
+You can specifiy multiple accounts. Make sure they have access in your Google Auth app. The `extra_info` field is especially interesting as you can add info here that you want to tell the AI about the account (e.g. whether it has a specific agenda)
 
-```bash
-GOOGLE_EMAILS=<email1>:<email2>
-```
-
-Note: You can add multiple emails by separating them with `:`.
-
-Note: When you first execute one of the tools for a specific email, a browser will open, redirect you to Google and ask for your credentials, scope, etc. After a successful login, it stores the credentials in a local file called `.oauth.{email}.json`. From that one,
-the refresh token will be used.
+Note: When you first execute one of the tools for a specific account, a browser will open, redirect you to Google and ask for your credentials, scope, etc. After a successful login, it stores the credentials in a local file called `.oauth.{email}.json`. Once you are authorized, the refresh token will be used.
 
 #### Claude Desktop
 
