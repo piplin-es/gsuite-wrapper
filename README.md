@@ -83,7 +83,7 @@ Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps
 
 4. Create a `.accounts.json` file with account information
 
-```
+```json
 {
     "accounts": [
         {
