@@ -5,9 +5,10 @@ from oauth2client.client import (
     OAuth2Credentials,
     Credentials,
 )
-from apiclient.discovery import build
+from googleapiclient.discovery import build
 import httplib2
 from google.auth.transport.requests import Request
+import os
 
 # Path to client_secrets.json which should contain a JSON document such as:
 #   {
@@ -23,6 +24,7 @@ CLIENTSECRETS_LOCATION = './.gauth.json'
 REDIRECT_URI = 'http://localhost:4100/code'
 SCOPES = [
     "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
     "https://mail.google.com/",
     "https://www.googleapis.com/auth/calendar"
 ]
@@ -51,8 +53,10 @@ class NoRefreshTokenException(GetCredentialsException):
 class NoUserIdException(Exception):
   """Error raised when no user ID could be retrieved."""
 
+def _get_credential_filename(user_id: str) -> str:
+    return f'./.oauth2.{user_id}.json'
 
-def get_stored_credentials() -> OAuth2Credentials | None:
+def get_stored_credentials(user_id: str) -> OAuth2Credentials | None:
     """Retrieved stored credentials for the provided user ID.
 
     Args:
@@ -61,7 +65,13 @@ def get_stored_credentials() -> OAuth2Credentials | None:
     Stored oauth2client.client.OAuth2Credentials if found, None otherwise.
     """
     try:
-        with open('./oauth2creds.json', 'r') as f:
+
+        cred_file_path = _get_credential_filename(user_id=user_id)
+        if not os.path.exists(cred_file_path):
+            logging.warning(f"No stored Oauth2 credentials yet at path: {cred_file_path}")
+            return None
+
+        with open(cred_file_path, 'r') as f:
             data = f.read()
             return Credentials.new_from_json(data)
     except Exception as e:
@@ -71,7 +81,7 @@ def get_stored_credentials() -> OAuth2Credentials | None:
     raise None
 
 
-def store_credentials(credentials: OAuth2Credentials):
+def store_credentials(credentials: OAuth2Credentials, user_id: str):
     """Store OAuth 2.0 credentials in the application's database.
 
     This function stores the provided OAuth 2.0 credentials using the user ID as
@@ -83,7 +93,7 @@ def store_credentials(credentials: OAuth2Credentials):
     """
     
     data = credentials.to_json()
-    with open('./oauth2creds.json', 'w') as f:
+    with open(_get_credential_filename(user_id=user_id), 'w') as f:
         f.write(data)
 
 
@@ -123,8 +133,8 @@ def get_user_info(credentials):
     user_info = None
     try:
         user_info = user_info_service.userinfo().get().execute()
-    except httplib2.errors.HttpError as e:
-        logging.error('An error occurred: %s', e)
+    except Exception as e:
+        logging.error(f'An error occurred: {e}')
     if user_info and user_info.get('id'):
         return user_info
     else:
@@ -174,13 +184,15 @@ def get_credentials(authorization_code, state):
     try:
         credentials = exchange_code(authorization_code)
         user_info = get_user_info(credentials)
+        import json
+        logging.error(f"user_info: {json.dumps(user_info)}")
         email_address = user_info.get('email')
-        user_id = user_info.get('id')
+        
         if credentials.refresh_token is not None:
-            store_credentials(credentials)
+            store_credentials(credentials, user_id=email_address)
             return credentials
         else:
-            credentials = get_stored_credentials()
+            credentials = get_stored_credentials(user_id=email_address)
             if credentials and credentials.refresh_token is not None:
                 return credentials
     except CodeExchangeException as error:

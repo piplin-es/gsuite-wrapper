@@ -1,4 +1,4 @@
-from apiclient.discovery import build 
+from googleapiclient.discovery import build 
 from . import gauth
 import logging
 import base64
@@ -7,8 +7,8 @@ from email.mime.text import MIMEText
 
 
 class GmailService():
-    def __init__(self):
-        credentials = gauth.get_stored_credentials()
+    def __init__(self, user_id: str):
+        credentials = gauth.get_stored_credentials(user_id=user_id)
         if not credentials:
             raise RuntimeError("No Oauth2 credentials stored")
         self.service = build('gmail', 'v1', credentials=credentials)
@@ -83,24 +83,34 @@ class GmailService():
     def _extract_body(self, payload) -> str | None:
         """
         Extract the email body from the payload.
-        Handles both multipart and single part messages.
+        Handles both multipart and single part messages, including nested multiparts.
         """
         try:
+            # For single part text/plain messages
             if payload.get('mimeType') == 'text/plain':
                 data = payload.get('body', {}).get('data')
                 if data:
                     return base64.urlsafe_b64decode(data).decode('utf-8')
-                
-            elif payload.get('mimeType') == 'multipart/alternative':
+            
+            # For multipart messages (both alternative and related)
+            if payload.get('mimeType', '').startswith('multipart/'):
                 parts = payload.get('parts', [])
-                # Try to find text/plain part first
+                
+                # First try to find a direct text/plain part
                 for part in parts:
                     if part.get('mimeType') == 'text/plain':
                         data = part.get('body', {}).get('data')
                         if data:
                             return base64.urlsafe_b64decode(data).decode('utf-8')
+                
+                # If no direct text/plain, recursively check nested multipart structures
+                for part in parts:
+                    if part.get('mimeType', '').startswith('multipart/'):
+                        nested_body = self._extract_body(part)
+                        if nested_body:
+                            return nested_body
                             
-                # Fall back to first part if no text/plain found
+                # If still no body found, try the first part as fallback
                 if parts and 'body' in parts[0] and 'data' in parts[0]['body']:
                     data = parts[0]['body']['data']
                     return base64.urlsafe_b64decode(data).decode('utf-8')
@@ -179,7 +189,7 @@ class GmailService():
             logging.error(traceback.format_exc())
             return None
         
-    def create_draft(self, to: str, subject: str, body: str, cc: list[str] = None) -> dict | None:
+    def create_draft(self, to: str, subject: str, body: str, cc: list[str] | None = None) -> dict | None:
         """
         Create a draft email message.
         
@@ -252,7 +262,7 @@ class GmailService():
             logging.error(traceback.format_exc())
             return False
         
-    def create_reply(self, original_message: dict, reply_body: str, send: bool = False, cc: list[str] = None) -> dict | None:
+    def create_reply(self, original_message: dict, reply_body: str, send: bool = False, cc: list[str] | None = None) -> dict | None:
         """
         Create a reply to an email message and either send it or save as draft.
         
@@ -292,8 +302,8 @@ class GmailService():
             if cc:
                 mime_message['cc'] = ','.join(cc)
                 
-            mime_message['In-Reply-To'] = original_message.get('id')
-            mime_message['References'] = original_message.get('id')
+            mime_message['In-Reply-To'] = original_message.get('id', '')
+            mime_message['References'] = original_message.get('id', '')
             
             raw_message = base64.urlsafe_b64encode(mime_message.as_bytes()).decode('utf-8')
             
