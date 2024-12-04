@@ -1,12 +1,15 @@
 # mcp-gsuite MCP server
 
-MCP server to interact with Google.
+MCP server to interact with Google produts.
 
 ## Example prompts
 
 Right now, this MCP server supports Gmail and Calendar integration with the following capabilities:
 
-1. Gmail
+1. General
+- Multiple google accounts
+
+2. Gmail
 - Get your Gmail user information
 - Query emails with flexible search (e.g., unread, from specific senders, date ranges, with attachments)
 - Retrieve complete email content by ID
@@ -14,7 +17,8 @@ Right now, this MCP server supports Gmail and Calendar integration with the foll
 - Delete draft emails
 - Reply to existing emails (can either send immediately or save as draft)
 
-2. Calendar
+3. Calendar
+- Manage multiple calendars
 - Get calendar events within specified time ranges
 - Create calendar events with:
   - Title, start/end times
@@ -32,6 +36,10 @@ Example prompts you can try:
 - Take the email about ABC and summarize it
 - Write a nice response to Alice's last email and upload a draft.
 - Reply to Bob's email with a Thank you note. Store it as draft
+
+- What do I have on my agenda tomorrow?
+- Check my private account's Family agenda for next week
+- I need to plan an event with Tim for 2hrs next week. Suggest some time slots.
 
 ## Quickstart
 
@@ -61,7 +69,7 @@ Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps
 
 3. Then create a `.gauth.json` in your working directory:
 
-```
+```json
 {
     "web": {
         "client_id": "$your_client_id",
@@ -73,7 +81,15 @@ Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps
 }
 ```
 
-Note: When you first execute one of the tools, a browser will open, redirect you to Google and ask for your credentials, scope, etc. After a successful login, it stores the credentials in a local file called `oauth2creds.json`. From that one,
+4. Create a `.env` file in your working directory (or pass via MCP config)
+
+```bash
+GOOGLE_EMAILS=<email1>:<email2>
+```
+
+Note: You can add multiple emails by separating them with `:`.
+
+Note: When you first execute one of the tools for a specific email, a browser will open, redirect you to Google and ask for your credentials, scope, etc. After a successful login, it stores the credentials in a local file called `.oauth.{email}.json`. From that one,
 the refresh token will be used.
 
 #### Claude Desktop
