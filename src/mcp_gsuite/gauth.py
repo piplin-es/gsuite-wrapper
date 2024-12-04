@@ -9,17 +9,9 @@ from googleapiclient.discovery import build
 import httplib2
 from google.auth.transport.requests import Request
 import os
+import pydantic
+import json
 
-# Path to client_secrets.json which should contain a JSON document such as:
-#   {
-#     "web": {
-#       "client_id": "[[YOUR_CLIENT_ID]]",
-#       "client_secret": "[[YOUR_CLIENT_SECRET]]",
-#       "redirect_uris": [],
-#       "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-#       "token_uri": "https://accounts.google.com/o/oauth2/token"
-#     }
-#   }
 CLIENTSECRETS_LOCATION = './.gauth.json'
 REDIRECT_URI = 'http://localhost:4100/code'
 SCOPES = [
@@ -28,6 +20,24 @@ SCOPES = [
     "https://mail.google.com/",
     "https://www.googleapis.com/auth/calendar"
 ]
+
+class AccountInfo(pydantic.BaseModel):
+
+    email: str
+    account_type: str
+    extra_info: str
+
+    def __init__(self, email: str, account_type: str, extra_info: str = ""):
+        super().__init__(email=email, account_type=account_type, extra_info=extra_info)
+
+    def to_description(self):
+        return f"""Account for email: {self.email} of type: {self.account_type}. Extra info for: {self.extra_info}"""
+
+def get_account_info() -> list[AccountInfo]:
+    with open(CLIENTSECRETS_LOCATION) as f:
+        data = json.load(f)
+        accounts = data.get("accounts", [])
+        return [AccountInfo.model_validate(acc) for acc in accounts]
 
 class GetCredentialsException(Exception):
   """Error raised when an error occurred while retrieving credentials.

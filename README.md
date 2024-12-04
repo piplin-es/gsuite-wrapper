@@ -178,5 +178,5 @@ Upon launching, the Inspector will display a URL that you can access in your bro
 You can also watch the server logs with this command:
 
 ```bash
-tail -n 20 -f ~/Library/Logs/Claude/mcp-server-mcp-gsuite.log
+tail -n 20 -f ~/Library/Logs/Claude/mcp-server-mcp-obsidian.log
 ```

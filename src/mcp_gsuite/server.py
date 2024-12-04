@@ -73,11 +73,11 @@ def start_auth_flow(user_id: str):
 
 
 def setup_oauth2(user_id: str):
-    users = os.getenv("GOOGLE_EMAILS", "").split(":")
-    if len(users) == 0:
-        raise RuntimeError("No users specified in env var GOOGLE_EMAILS")
-    if user_id not in users:
-        raise RuntimeError(f"email: {user_id} not specified in ENV")
+    accounts = gauth.get_account_info()
+    if len(accounts) == 0:
+        raise RuntimeError("No accounts specified in .gauth.json")
+    if user_id not in [a.email for a in accounts]:
+        raise RuntimeError(f"Account for email: {user_id} not specified in .gauth.json")
 
     credentials = gauth.get_stored_credentials(user_id=user_id)
     if not credentials:
@@ -149,11 +149,11 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
 
 async def main():
 
-    emails = os.getenv("GOOGLE_EMAILS", "").split(":")
-    for email in emails:
-        creds = gauth.get_stored_credentials(user_id=email)
+    accounts = gauth.get_account_info()
+    for account in accounts:
+        creds = gauth.get_stored_credentials(user_id=account.email)
         if creds:
-            logging.info(f"found credentials for {email}")
+            logging.info(f"found credentials for {account.email}")
 
     from mcp.server.stdio import stdio_server
 
