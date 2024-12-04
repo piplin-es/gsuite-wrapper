@@ -68,7 +68,7 @@ def get_stored_credentials(user_id: str) -> OAuth2Credentials | None:
 
         cred_file_path = _get_credential_filename(user_id=user_id)
         if not os.path.exists(cred_file_path):
-            logging.warning("no stored credentials yet")
+            logging.warning(f"No stored Oauth2 credentials yet at path: {cred_file_path}")
             return None
 
         with open(cred_file_path, 'r') as f:

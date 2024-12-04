@@ -24,7 +24,6 @@ from urllib.parse import (
 
 class OauthListener(BaseHTTPRequestHandler):
     def do_GET(self):
-        print("DO GET")
         url = urlparse(self.path)
         if url.path != "/code":
             self.send_response(404)
@@ -42,10 +41,8 @@ class OauthListener(BaseHTTPRequestHandler):
         self.wfile.write("Auth successful! You can close the tab!".encode("utf-8"))
         self.wfile.flush()
 
-        print(query["code"][0])
         storage = {}
         creds = gauth.get_credentials(authorization_code=query["code"][0], state=storage)
-        print("got credentials.", creds)
 
         t = threading.Thread(target = self.server.shutdown)
         t.daemon = True
@@ -152,10 +149,12 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
 
 async def main():
 
-    #setup_oauth2()
-    logger.error("Handled oauth. start MCP server")
+    emails = os.getenv("GOOGLE_EMAILS", "").split(":")
+    for email in emails:
+        creds = gauth.get_stored_credentials(user_id=email)
+        if creds:
+            logging.info(f"found credentials for {email}")
 
-    # Import here to avoid issues with event loops
     from mcp.server.stdio import stdio_server
 
     async with stdio_server() as (read_stream, write_stream):
