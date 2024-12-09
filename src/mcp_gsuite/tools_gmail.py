@@ -11,6 +11,13 @@ import json
 from . import toolhandler
 import base64
 
+def decode_base64_data(file_data):
+    standard_base64_data = file_data.replace("-", "+").replace("_", "/")
+    missing_padding = len(standard_base64_data) % 4
+    if missing_padding:
+        standard_base64_data += '=' * (4 - missing_padding)
+    return base64.b64decode(standard_base64_data, validate=True)
+
 class QueryEmailsToolHandler(toolhandler.ToolHandler):
     def __init__(self):
         super().__init__("query_gmail_emails")
@@ -426,13 +433,7 @@ class GetAttachmentToolHandler(toolhandler.ToolHandler):
         file_data = attachment_data["data"]
         attachment_url = f"attachment://gmail/{args['message_id']}/{args['attachment_id']}/{filename}"
         if args.get("save_to_disk"):
-            standard_base64_data = file_data.replace("-", "+").replace("_", "/")
-
-            missing_padding = len(standard_base64_data) % 4
-            if missing_padding:
-                standard_base64_data += '=' * (4 - missing_padding)
-
-            decoded_data = base64.b64decode(standard_base64_data)
+            decoded_data = decode_base64_data(file_data)
             with open(args["save_to_disk"], "wb") as f:
                 f.write(decoded_data)
             return [
@@ -530,12 +531,8 @@ class BulkSaveAttachmentsToolHandler(toolhandler.ToolHandler):
                 continue
 
             file_data = attachment_data["data"]
-            standard_base64_data = file_data.replace("-", "+").replace("_", "/")
-            missing_padding = len(standard_base64_data) % 4
-            if missing_padding:
-                standard_base64_data += '=' * (4 - missing_padding)
             try:    
-                decoded_data = base64.b64decode(standard_base64_data)
+                decoded_data = decode_base64_data(file_data)
                 with open(attachment_info["save_path"], "wb") as f:
                     f.write(decoded_data)
                 results.append(
