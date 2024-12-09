@@ -326,9 +326,21 @@ class GetAttachmentToolHandler(toolhandler.ToolHandler):
                     "attachment_id": {
                         "type": "string",
                         "description": "The ID of the attachment to retrieve"
+                    },
+                    "mime_type": {
+                        "type": "string",
+                        "description": "The MIME type of the attachment"
+                    },
+                    "filename": {
+                        "type": "string",
+                        "description": "The filename of the attachment"
+                    },
+                    "save_to_disk": {
+                        "type": "string",
+                        "description": "The fullpath to save the attachment to disk. If not provided, the attachment is returned as a resource."
                     }
                 },
-                "required": ["message_id", "attachment_id", toolhandler.USER_ID_ARG]
+                "required": ["message_id", "attachment_id", "mime_type", "filename", toolhandler.USER_ID_ARG]
             }
         )
 
@@ -337,7 +349,12 @@ class GetAttachmentToolHandler(toolhandler.ToolHandler):
             raise RuntimeError("Missing required argument: message_id")
         if "attachment_id" not in args:
             raise RuntimeError("Missing required argument: attachment_id")
-
+        if "mime_type" not in args:
+            raise RuntimeError("Missing required argument: mime_type")
+        if "filename" not in args:
+            raise RuntimeError("Missing required argument: filename")
+        filename = args["filename"]
+        mime_type = args["mime_type"]
         user_id = args.get(toolhandler.USER_ID_ARG)
         if not user_id:
             raise RuntimeError(f"Missing required argument: {toolhandler.USER_ID_ARG}")
@@ -352,13 +369,31 @@ class GetAttachmentToolHandler(toolhandler.ToolHandler):
                 )
             ]
 
-        filename = attachment_data.get("filename", "untitled")
         file_data = attachment_data["data"]
+        attachment_url = f"attachment://gmail/{args['message_id']}/{args['attachment_id']}/{filename}"
+        if args.get("save_to_disk"):
+            standard_base64_data = file_data.replace("-", "+").replace("_", "/")
 
+            missing_padding = len(standard_base64_data) % 4
+            if missing_padding:
+                standard_base64_data += '=' * (4 - missing_padding)
+
+            decoded_data = base64.b64decode(standard_base64_data)
+            with open(args["save_to_disk"], "wb") as f:
+                f.write(decoded_data)
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Attachment saved to disk: {args['save_to_disk']}"
+                )
+            ]
         return [
             EmbeddedResource(
-                type="file",
-                filename=filename,
-                data=base64.urlsafe_b64decode(file_data)
+                type="resource",
+                resource={
+                    "blob": file_data,
+                    "uri": attachment_url,
+                    "mimeType": mime_type,
+                },
             )
         ]

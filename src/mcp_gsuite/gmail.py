@@ -165,7 +165,7 @@ class GmailService():
             logging.error(traceback.format_exc())
             return []
         
-    def get_email_by_id_with_attachments(self, email_id: str) -> Tuple[dict, list] | Tuple[None, list]:
+    def get_email_by_id_with_attachments(self, email_id: str) -> Tuple[dict, dict] | Tuple[None, dict]:
         """
         Fetch and parse a complete email message by its ID including attachment IDs.
         
@@ -188,12 +188,20 @@ class GmailService():
 
             if parsed_email is None:
                 return None, []
-            
-            attachment_ids = [part["body"]["attachmentId"] 
-                            for part in message["payload"]["parts"] 
-                            if "attachmentId" in part["body"]]
 
-            return parsed_email, attachment_ids
+            attachments = {}
+            for part in message["payload"]["parts"]:
+                if "attachmentId" in part["body"]:
+                    attachment_id = part["body"]["attachmentId"]
+                    attachment = {
+                        "filename": part["filename"],
+                        "mimeType": part["mimeType"],
+                        "attachmentId": attachment_id
+                    }
+                    attachments[attachment_id] = attachment
+
+
+            return parsed_email, attachments
             
         except Exception as e:
             logging.error(f"Error retrieving email {email_id}: {str(e)}")
@@ -363,9 +371,8 @@ class GmailService():
                 messageId=message_id, 
                 id=attachment_id
             ).execute()
-            
             return {
-                "filename": attachment.get("filename"),
+                "size": attachment.get("size"),
                 "data": attachment.get("data")
             }
             
