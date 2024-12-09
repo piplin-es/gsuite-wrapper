@@ -344,3 +344,32 @@ class GmailService():
             logging.error(f"Error {'sending' if send else 'drafting'} reply: {str(e)}")
             logging.error(traceback.format_exc())
             return None
+        
+    def get_attachment(self, message_id: str, attachment_id: str) -> dict | None:
+        """
+        Retrieves a Gmail attachment by its ID.
+        
+        Args:
+            message_id (str): The ID of the Gmail message containing the attachment
+            attachment_id (str): The ID of the attachment to retrieve
+        
+        Returns:
+            dict: Attachment data including filename and base64-encoded content
+            None: If retrieval fails
+        """
+        try:
+            attachment = self.service.users().messages().attachments().get(
+                userId='me',
+                messageId=message_id, 
+                id=attachment_id
+            ).execute()
+            
+            return {
+                "filename": attachment.get("filename"),
+                "data": attachment.get("data")
+            }
+            
+        except Exception as e:
+            logging.error(f"Error retrieving attachment {attachment_id} from message {message_id}: {str(e)}")
+            logging.error(traceback.format_exc())
+            return None

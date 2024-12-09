@@ -9,8 +9,7 @@ from mcp.types import (
 from . import gmail
 import json
 from . import toolhandler
-
-
+import base64
 
 class QueryEmailsToolHandler(toolhandler.ToolHandler):
     def __init__(self):
@@ -305,5 +304,61 @@ class ReplyEmailToolHandler(toolhandler.ToolHandler):
             TextContent(
                 type="text",
                 text=json.dumps(result, indent=2)
+            )
+        ]
+
+class GetAttachmentToolHandler(toolhandler.ToolHandler):
+    def __init__(self):
+        super().__init__("get_gmail_attachment")
+
+    def get_tool_description(self) -> Tool:
+        return Tool(
+            name=self.name,
+            description="Retrieves a Gmail attachment by its ID.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "__user_id__": self.get_user_id_arg_schema(),
+                    "message_id": {
+                        "type": "string",
+                        "description": "The ID of the Gmail message containing the attachment"
+                    },
+                    "attachment_id": {
+                        "type": "string",
+                        "description": "The ID of the attachment to retrieve"
+                    }
+                },
+                "required": ["message_id", "attachment_id", toolhandler.USER_ID_ARG]
+            }
+        )
+
+    def run_tool(self, args: dict) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
+        if "message_id" not in args:
+            raise RuntimeError("Missing required argument: message_id")
+        if "attachment_id" not in args:
+            raise RuntimeError("Missing required argument: attachment_id")
+
+        user_id = args.get(toolhandler.USER_ID_ARG)
+        if not user_id:
+            raise RuntimeError(f"Missing required argument: {toolhandler.USER_ID_ARG}")
+        gmail_service = gmail.GmailService(user_id=user_id)
+        attachment_data = gmail_service.get_attachment(args["message_id"], args["attachment_id"])
+
+        if attachment_data is None:
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Failed to retrieve attachment with ID: {args['attachment_id']} from message: {args['message_id']}"
+                )
+            ]
+
+        filename = attachment_data.get("filename", "untitled")
+        file_data = attachment_data["data"]
+
+        return [
+            EmbeddedResource(
+                type="file",
+                filename=filename,
+                data=base64.urlsafe_b64decode(file_data)
             )
         ]
