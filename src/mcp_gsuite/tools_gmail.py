@@ -75,7 +75,7 @@ class GetEmailByIdToolHandler(toolhandler.ToolHandler):
     def get_tool_description(self) -> Tool:
         return Tool(
             name=self.name,
-            description="Retrieves a complete Gmail email message by its ID, including the full message body.",
+            description="Retrieves a complete Gmail email message by its ID, including the full message body and attachment IDs.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -97,7 +97,7 @@ class GetEmailByIdToolHandler(toolhandler.ToolHandler):
         if not user_id:
             raise RuntimeError(f"Missing required argument: {toolhandler.USER_ID_ARG}")
         gmail_service = gmail.GmailService(user_id=user_id)
-        email = gmail_service.get_email_by_id(args["email_id"])
+        email, attachment_ids = gmail_service.get_email_by_id_with_attachments(args["email_id"])
 
         if email is None:
             return [
@@ -107,14 +107,16 @@ class GetEmailByIdToolHandler(toolhandler.ToolHandler):
                 )
             ]
 
+        email["attachmentIds"] = attachment_ids
+
         return [
             TextContent(
                 type="text",
                 text=json.dumps(email, indent=2)
             )
         ]
-    
 
+    
 class CreateDraftToolHandler(toolhandler.ToolHandler):
     def __init__(self):
         super().__init__("create_gmail_draft")
