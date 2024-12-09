@@ -187,3 +187,22 @@ You can also watch the server logs with this command:
 ```bash
 tail -n 20 -f ~/Library/Logs/Claude/mcp-server-mcp-gsuite.log
 ```
+
+## Available Tools
+
+The MCP server provides a variety of tools to interact with Google products. Here is a list of tools currently supported:
+
+* **Query Emails**: Search your Gmail messages based on various criteria.
+* **Get Email by ID**: Retrieve specific emails using their unique IDs.
+* **Create Draft**: Create new draft emails with options for recipients, subject, body, and CC.
+* **Delete Draft**: Remove draft emails from your Gmail account.
+* **Reply to Email**: Send a reply to an existing email or save it as a draft.
+* **Get Attachment**: Retrieve attachments from emails.
+* **Bulk Get Emails by IDs**: Retrieve multiple emails at once by their IDs.
+* **Bulk Save Attachments**: Save multiple attachments from emails to your local system.
+* **List Calendars**: List all calendars associated with the Google account.
+* **Get Calendar Events**: Retrieve events from a specified calendar.
+* **Create Calendar Event**: Add new events to your calendar.
+* **Delete Calendar Event**: Remove events from your calendar.
+
+These tools are accessible via the MCP server's standard interface and can be used to automate interactions with Gmail and Google Calendar.
