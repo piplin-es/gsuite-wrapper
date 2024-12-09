@@ -193,12 +193,14 @@ class GmailService():
             for part in message["payload"]["parts"]:
                 if "attachmentId" in part["body"]:
                     attachment_id = part["body"]["attachmentId"]
+                    part_id = part["partId"]
                     attachment = {
                         "filename": part["filename"],
                         "mimeType": part["mimeType"],
-                        "attachmentId": attachment_id
+                        "attachmentId": attachment_id,
+                        "partId": part_id
                     }
-                    attachments[attachment_id] = attachment
+                    attachments[part_id] = attachment
 
 
             return parsed_email, attachments
