@@ -1,5 +1,6 @@
 # mcp-gsuite MCP server
 
+[![smithery badge](https://smithery.ai/badge/mcp-gsuite)](https://smithery.ai/protocol/mcp-gsuite)
 MCP server to interact with Google produts.
 
 ## Example prompts
@@ -16,6 +17,8 @@ Right now, this MCP server supports Gmail and Calendar integration with the foll
 * Create new draft emails with recipients, subject, body and CC options
 * Delete draft emails
 * Reply to existing emails (can either send immediately or save as draft)
+* Retrieve multiple emails at once by their IDs.
+* Save multiple attachments from emails to your local system.
 
 3. Calendar
 * Manage multiple calendars
@@ -45,6 +48,14 @@ Example prompts you can try:
 
 ### Install
 
+### Installing via Smithery
+
+To install mcp-gsuite for Claude Desktop automatically via [Smithery](https://smithery.ai/protocol/mcp-gsuite):
+
+```bash
+npx @smithery/cli install mcp-gsuite --client claude
+```
+
 #### Oauth 2
 
 Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps to set up authentication:
@@ -68,6 +79,7 @@ Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps
      "https://www.googleapis.com/auth/calendar",
      "https://www.googleapis.com/auth/userinfo.email"
    ]
+```
 
 3. Then create a `.gauth.json` in your working directory with client
 
