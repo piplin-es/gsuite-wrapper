@@ -160,6 +160,24 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 
 </details>
 
+### Configuration Options
+
+The MCP server can be configured with several command-line options to specify custom paths for authentication and account information:
+
+* `--gauth-file`: Specifies the path to the `.gauth.json` file containing OAuth2 client configuration. Default is `./.gauth.json`.
+* `--accounts-file`: Specifies the path to the `.accounts.json` file containing information about the Google accounts. Default is `./.accounts.json`.
+* `--credentials-dir`: Specifies the directory where OAuth credentials are stored after successful authentication. Default is the current working directory with a subdirectory for each account as `.oauth.{email}.json`.
+
+These options allow for flexibility in managing different environments or multiple sets of credentials and accounts, especially useful in development and testing scenarios.
+
+Example usage:
+
+```bash
+uv run mcp-gsuite --gauth-file /path/to/custom/.gauth.json --accounts-file /path/to/custom/.accounts.json --credentials-dir /path/to/custom/credentials
+```
+
+This configuration is particularly useful when you have multiple instances of the server running with different configurations or when deploying to environments where the default paths are not suitable.
+
 ## Development
 
 ### Building and Publishing
