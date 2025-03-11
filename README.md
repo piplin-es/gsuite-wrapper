@@ -139,6 +139,29 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 }
 ```
 
+
+Note: You can also use the `uv run mcp-gsuite --accounts-file /path/to/custom/.accounts.json` to specify a different accounts file or `--credentials-dir /path/to/custom/credentials` to specify a different credentials directory.
+
+```json
+{
+  "mcpServers": {
+    "mcp-gsuite": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "<dir_to>/mcp-gsuite",
+        "run",
+        "mcp-gsuite",
+        "--accounts-file",
+        "/path/to/custom/.accounts.json",
+        "--credentials-dir",
+        "/path/to/custom/credentials"
+      ]
+    }
+  }
+}
+```
+
 </details>
 
 <details>
@@ -151,7 +174,11 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
     "mcp-gsuite": {
       "command": "uvx",
       "args": [
-        "mcp-gsuite"
+        "mcp-gsuite",
+        "--accounts-file",
+        "/path/to/custom/.accounts.json",
+        "--credentials-dir",
+        "/path/to/custom/credentials"
       ]
     }
   }
