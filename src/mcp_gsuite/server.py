@@ -8,6 +8,7 @@ import traceback
 from dotenv import load_dotenv
 from mcp.server import Server
 import threading
+import sys
 from mcp.types import (
     Tool,
     TextContent,
@@ -56,6 +57,7 @@ from . import tools_gmail
 from . import tools_calendar
 from . import toolhandler
 
+
 # Load environment variables
 
 # Configure logging
@@ -64,7 +66,11 @@ logger = logging.getLogger("mcp-gsuite")
 
 def start_auth_flow(user_id: str):
     auth_url = gauth.get_authorization_url(user_id, state={})
-    subprocess.Popen(['open', auth_url])
+    if sys.platform == "darwin" or sys.platform.startswith("linux"):
+        subprocess.Popen(['open', auth_url])
+    else:
+        import webbrowser
+        webbrowser.open(auth_url)
 
     # start server for code callback
     server_address = ('', 4100)
@@ -150,7 +156,7 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
 
 
 async def main():
-
+    print(sys.platform)
     accounts = gauth.get_account_info()
     for account in accounts:
         creds = gauth.get_stored_credentials(user_id=account.email)
