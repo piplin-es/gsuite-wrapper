@@ -1,4 +1,3 @@
-
 import logging
 from collections.abc import Sequence
 from functools import lru_cache
@@ -27,23 +26,31 @@ class OauthListener(BaseHTTPRequestHandler):
     def do_GET(self):
         url = urlparse(self.path)
         if url.path != "/code":
+            logger.info("Received request for invalid path")
             self.send_response(404)
             self.end_headers()
             return
 
         query = parse_qs(url.query)
         if "code" not in query:
+            logger.info("Received request without auth code")
             self.send_response(400)
             self.end_headers()
             return
         
+        logger.info("Received valid auth code")
         self.send_response(200)
         self.end_headers()
         self.wfile.write("Auth successful! You can close the tab!".encode("utf-8"))
         self.wfile.flush()
 
         storage = {}
-        creds = gauth.get_credentials(authorization_code=query["code"][0], state=storage)
+        try:
+            creds = gauth.get_credentials(authorization_code=query["code"][0], state=storage)
+            logger.info("Successfully obtained credentials")
+        except Exception as e:
+            logger.error(f"Error getting credentials: {str(e)}")
+            raise
 
         t = threading.Thread(target = self.server.shutdown)
         t.daemon = True
@@ -66,16 +73,21 @@ logger = logging.getLogger("mcp-gsuite")
 
 def start_auth_flow(user_id: str):
     auth_url = gauth.get_authorization_url(user_id, state={})
-    if sys.platform == "darwin" or sys.platform.startswith("linux"):
-        subprocess.Popen(['open', auth_url])
-    else:
-        import webbrowser
-        webbrowser.open(auth_url)
+    logger.info(f"Opening auth URL in browser for user {user_id}")
+    try:
+        if sys.platform == "darwin" or sys.platform.startswith("linux"):
+            subprocess.Popen(['open', auth_url], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        else:
+            import webbrowser
+            webbrowser.open(auth_url)
 
-    # start server for code callback
-    server_address = ('', 4100)
-    server = HTTPServer(server_address, OauthListener)
-    server.serve_forever()
+        # start server for code callback
+        server_address = ('', 4100)
+        server = HTTPServer(server_address, OauthListener)
+        server.serve_forever()
+    except Exception as e:
+        logger.error(f"Error in auth flow: {str(e)}")
+        raise
 
 
 def setup_oauth2(user_id: str):
@@ -156,7 +168,6 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
 
 
 async def main():
-    print(sys.platform)
     accounts = gauth.get_account_info()
     for account in accounts:
         creds = gauth.get_stored_credentials(user_id=account.email)
