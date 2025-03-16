@@ -5,7 +5,7 @@ MCP server to interact with Google produts.
 
 ## Example prompts
 
-Right now, this MCP server supports Gmail and Calendar integration with the following capabilities:
+Right now, this MCP server supports Gmail, Calendar, and Google Analytics integration with the following capabilities:
 
 1. General
 * Multiple google accounts
@@ -31,6 +31,14 @@ Right now, this MCP server supports Gmail and Calendar integration with the foll
   + Notification preferences
 * Delete calendar events
 
+4. Google Analytics
+* List all Google Analytics properties accessible by the user
+* Run reports on Google Analytics data with:
+  + Support for various metrics (activeUsers, totalUsers, newUsers, etc.)
+  + Support for various dimensions (date, deviceCategory, country, etc.)
+  + Customizable date ranges
+  + Flexible data limits
+
 Example prompts you can try:
 
 * Retrieve my latest unread messages
@@ -43,6 +51,11 @@ Example prompts you can try:
 * What do I have on my agenda tomorrow?
 * Check my private account's Family agenda for next week
 * I need to plan an event with Tim for 2hrs next week. Suggest some time slots.
+
+* List all my Google Analytics properties
+* Get the number of active users for my website over the last 30 days
+* Show me the top countries where my users are coming from
+* Compare page views across different sections of my website
 
 ## Quickstart
 
@@ -63,7 +76,7 @@ Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps
 1. Create OAuth2 Credentials:
    - Go to the [Google Cloud Console](https://console.cloud.google.com/)
    - Create a new project or select an existing one
-   - Enable the Gmail API and Google Calendar API for your project
+   - Enable the Gmail API, Google Calendar API, and Google Analytics Data API for your project
    - Go to "Credentials" → "Create Credentials" → "OAuth client ID"
    - Select "Desktop app" or "Web application" as the application type
    - Configure the OAuth consent screen with required information
@@ -77,7 +90,8 @@ Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps
      "openid",
      "https://mail.google.com/",
      "https://www.googleapis.com/auth/calendar",
-     "https://www.googleapis.com/auth/userinfo.email"
+     "https://www.googleapis.com/auth/userinfo.email",
+     "https://www.googleapis.com/auth/analytics.readonly"
    ]
 ```
 

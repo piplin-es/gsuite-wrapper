@@ -1,7 +1,7 @@
 [project]
 name = "mcp-gsuite"
-version = "0.4.0"
-description = "MCP Server to connect to Google G-Suite"
+version = "0.4.6"
+description = "Google Workspace integration for Claude"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

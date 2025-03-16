@@ -28,12 +28,14 @@ def get_gauth_file() -> str:
 
 CLIENTSECRETS_LOCATION = get_gauth_file()
 
-REDIRECT_URI = 'http://localhost:4100/code'
+REDIRECT_URI = 'http://localhost:8080/'
 SCOPES = [
     "openid",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://mail.google.com/",
-    "https://www.googleapis.com/auth/calendar"
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/analytics.readonly",
+    "https://www.googleapis.com/auth/analytics.edit"
 ]
 
 
@@ -120,7 +122,6 @@ def get_stored_credentials(user_id: str) -> OAuth2Credentials | None:
     Stored oauth2client.client.OAuth2Credentials if found, None otherwise.
     """
     try:
-
         cred_file_path = _get_credential_filename(user_id=user_id)
         if not os.path.exists(cred_file_path):
             logging.warning(f"No stored Oauth2 credentials yet at path: {cred_file_path}")
@@ -128,12 +129,21 @@ def get_stored_credentials(user_id: str) -> OAuth2Credentials | None:
 
         with open(cred_file_path, 'r') as f:
             data = f.read()
-            return Credentials.new_from_json(data)
+            credentials = Credentials.new_from_json(data)
+            
+            # Check if the token needs to be refreshed
+            if credentials.access_token_expired:
+                logging.info("Access token has expired, refreshing...")
+                http = credentials.authorize(httplib2.Http())
+                credentials.refresh(http)
+                store_credentials(credentials, user_id)
+                
+            return credentials
     except Exception as e:
         logging.error(e)
         return None
 
-    raise None
+    return None
 
 
 def store_credentials(credentials: OAuth2Credentials, user_id: str):

@@ -25,7 +25,8 @@ from urllib.parse import (
 class OauthListener(BaseHTTPRequestHandler):
     def do_GET(self):
         url = urlparse(self.path)
-        if url.path != "/code":
+        # Accept requests to the root path (with or without trailing slash)
+        if url.path != "/" and url.path != "":
             logger.info("Received request for invalid path")
             self.send_response(404)
             self.end_headers()
@@ -62,6 +63,7 @@ load_dotenv()
 
 from . import tools_gmail
 from . import tools_calendar
+from . import tools_analytics
 from . import toolhandler
 
 
@@ -82,7 +84,7 @@ def start_auth_flow(user_id: str):
             webbrowser.open(auth_url)
 
         # start server for code callback
-        server_address = ('', 4100)
+        server_address = ('', 8080)
         server = HTTPServer(server_address, OauthListener)
         server.serve_forever()
     except Exception as e:
@@ -137,6 +139,9 @@ add_tool_handler(tools_calendar.ListCalendarsToolHandler())
 add_tool_handler(tools_calendar.GetCalendarEventsToolHandler())
 add_tool_handler(tools_calendar.CreateCalendarEventToolHandler())
 add_tool_handler(tools_calendar.DeleteCalendarEventToolHandler())
+
+add_tool_handler(tools_analytics.ListAnalyticsPropertiesToolHandler())
+add_tool_handler(tools_analytics.RunAnalyticsReportToolHandler())
 
 @app.list_tools()
 async def list_tools() -> list[Tool]:
