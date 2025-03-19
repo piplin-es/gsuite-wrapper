@@ -15,6 +15,16 @@ import argparse
 
 
 def get_gauth_file() -> str:
+    """Get the path to the client secrets file.
+    Checks environment variable GAUTH_FILE first, then command line argument --gauth-file.
+    Defaults to './.gauth.json' if neither is set.
+    """
+    # Check environment variable first
+    env_path = os.environ.get('GAUTH_FILE')
+    if env_path:
+        return env_path
+        
+    # Fall back to command line argument
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--gauth-file",
@@ -53,6 +63,16 @@ class AccountInfo(pydantic.BaseModel):
 
 
 def get_accounts_file() -> str:
+    """Get the path to the accounts configuration file.
+    Checks environment variable ACCOUNTS_FILE first, then command line argument --accounts-file.
+    Defaults to './.accounts.json' if neither is set.
+    """
+    # Check environment variable first
+    env_path = os.environ.get('ACCOUNTS_FILE')
+    if env_path:
+        return env_path
+        
+    # Fall back to command line argument
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--accounts-file",
@@ -97,6 +117,16 @@ class NoUserIdException(Exception):
 
 
 def get_credentials_dir() -> str:
+    """Get the directory to store OAuth2 credentials.
+    Checks environment variable CREDENTIALS_DIR first, then command line argument --credentials-dir.
+    Defaults to '.' if neither is set.
+    """
+    # Check environment variable first
+    env_path = os.environ.get('CREDENTIALS_DIR')
+    if env_path:
+        return env_path
+        
+    # Fall back to command line argument
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--credentials-dir",

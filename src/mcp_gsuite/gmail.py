@@ -84,11 +84,11 @@ class GmailService():
     def _extract_body(self, payload) -> str | None:
         """
         Extract the email body from the payload.
-        Handles both multipart and single part messages, including nested multiparts.
+        Handles text/plain, text/html and multipart messages, including nested multiparts.
         """
         try:
-            # For single part text/plain messages
-            if payload.get('mimeType') == 'text/plain':
+            # For single part text messages (plain or html)
+            if payload.get('mimeType') in ['text/plain', 'text/html']:
                 data = payload.get('body', {}).get('data')
                 if data:
                     return base64.urlsafe_b64decode(data).decode('utf-8')
@@ -104,7 +104,14 @@ class GmailService():
                         if data:
                             return base64.urlsafe_b64decode(data).decode('utf-8')
                 
-                # If no direct text/plain, recursively check nested multipart structures
+                # If no text/plain found, try text/html
+                for part in parts:
+                    if part.get('mimeType') == 'text/html':
+                        data = part.get('body', {}).get('data')
+                        if data:
+                            return base64.urlsafe_b64decode(data).decode('utf-8')
+                
+                # If still no body found, recursively check nested multipart structures
                 for part in parts:
                     if part.get('mimeType', '').startswith('multipart/'):
                         nested_body = self._extract_body(part)
@@ -190,7 +197,7 @@ class GmailService():
                 return None, []
 
             attachments = {}
-            for part in message["payload"]["parts"]:
+            for part in message["payload"].get("parts", []):
                 if "attachmentId" in part["body"]:
                     attachment_id = part["body"]["attachmentId"]
                     part_id = part["partId"]
