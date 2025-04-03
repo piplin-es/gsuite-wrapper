@@ -16,24 +16,10 @@ import argparse
 
 def get_gauth_file() -> str:
     """Get the path to the client secrets file.
-    Checks environment variable GAUTH_FILE first, then command line argument --gauth-file.
-    Defaults to './.gauth.json' if neither is set.
+    Checks environment variable GAUTH_FILE first.
+    Defaults to './.gauth.json' if not set.
     """
-    # Check environment variable first
-    env_path = os.environ.get('GAUTH_FILE')
-    if env_path:
-        return env_path
-        
-    # Fall back to command line argument
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--gauth-file",
-        type=str,
-        default="./.gauth.json",
-        help="Path to client secrets file",
-    )
-    args, _ = parser.parse_known_args()
-    return args.gauth_file
+    return os.environ.get('GAUTH_FILE', './.gsuite/.gauth.json')
 
 
 CLIENTSECRETS_LOCATION = get_gauth_file()
@@ -64,24 +50,10 @@ class AccountInfo(pydantic.BaseModel):
 
 def get_accounts_file() -> str:
     """Get the path to the accounts configuration file.
-    Checks environment variable ACCOUNTS_FILE first, then command line argument --accounts-file.
-    Defaults to './.accounts.json' if neither is set.
+    Checks environment variable ACCOUNTS_FILE first.
+    Defaults to './.accounts.json' if not set.
     """
-    # Check environment variable first
-    env_path = os.environ.get('ACCOUNTS_FILE')
-    if env_path:
-        return env_path
-        
-    # Fall back to command line argument
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--accounts-file",
-        type=str,
-        default="./.accounts.json",
-        help="Path to accounts configuration file",
-    )
-    args, _ = parser.parse_known_args()
-    return args.accounts_file
+    return os.environ.get('ACCOUNTS_FILE', './.gsuite/.accounts.json')
 
 
 def get_account_info() -> list[AccountInfo]:
@@ -90,6 +62,7 @@ def get_account_info() -> list[AccountInfo]:
         data = json.load(f)
         accounts = data.get("accounts", [])
         return [AccountInfo.model_validate(acc) for acc in accounts]
+
 
 class GetCredentialsException(Exception):
   """Error raised when an error occurred while retrieving credentials.
@@ -118,24 +91,10 @@ class NoUserIdException(Exception):
 
 def get_credentials_dir() -> str:
     """Get the directory to store OAuth2 credentials.
-    Checks environment variable CREDENTIALS_DIR first, then command line argument --credentials-dir.
-    Defaults to '.' if neither is set.
+    Checks environment variable CREDENTIALS_DIR first.
+    Defaults to '.' if not set.
     """
-    # Check environment variable first
-    env_path = os.environ.get('CREDENTIALS_DIR')
-    if env_path:
-        return env_path
-        
-    # Fall back to command line argument
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--credentials-dir",
-        type=str,
-        default=".",
-        help="Directory to store OAuth2 credentials",
-    )
-    args, _ = parser.parse_known_args()
-    return args.credentials_dir
+    return os.environ.get('CREDENTIALS_DIR', './.gsuite/')
 
 
 def _get_credential_filename(user_id: str) -> str:
@@ -225,6 +184,7 @@ def get_user_info(credentials):
     except Exception as e:
         logging.error(f'An error occurred: {e}')
     if user_info and user_info.get('id'):
+        logging.info(f"user_info: {json.dumps(user_info)}")
         return user_info
     else:
         raise NoUserIdException()

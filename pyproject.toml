@@ -1,28 +1,24 @@
 [project]
 name = "mcp-gsuite"
-version = "0.4.11"
-description = "Google Workspace integration for Claude"
-readme = "README.md"
+version = "0.4.14"
+description = "Google Workspace API Wrapper"
+authors = [
+    { name = "Gleb Reutov", email = "glebreutov@gmail.com" }
+]
 requires-python = ">=3.10"
 dependencies = [
- "beautifulsoup4>=4.12.3",
- "google-api-python-client>=2.154.0",
- "html2text>=2020.1.16",
- "httplib2>=0.22.0",
- "mcp>=1.3.0",
- "oauth2client==4.1.3",
- "pdfplumber>=0.10.3",
- "pytest>=8.3.5",
- "python-dotenv>=1.0.1",
- "pytz>=2024.2",
- "requests>=2.32.3",
+    "google-api-python-client>=2.154.0",
+    "httplib2>=0.22.0",
+    "mcp>=1.3.0",
+    "oauth2client==4.1.3",
+    "pytest>=8.3.5",
+    "python-dotenv>=1.0.1",
+    "pytz>=2024.2",
+    "requests>=2.32.3"
 ]
-[[project.authors]]
-name = "Markus Pfundstein"
-email = "markus@life-electronic.nl"
 
 [build-system]
-requires = [ "hatchling",]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
@@ -31,4 +27,4 @@ dev = [
 ]
 
 [project.scripts]
-mcp-gsuite = "mcp_gsuite:main"
+mcp-gsuite = "mcp_gsuite.server:main"

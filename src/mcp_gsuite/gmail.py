@@ -4,8 +4,257 @@ import logging
 import base64
 import traceback
 from email.mime.text import MIMEText
-from typing import Tuple
+from typing import Tuple, Dict, List, Optional
+from dataclasses import dataclass, field
+from datetime import datetime
 
+@dataclass
+class GmailAttachment:
+    """Represents a Gmail attachment with its metadata."""
+    filename: str
+    mime_type: str
+    attachment_id: str
+    part_id: str
+
+@dataclass
+class GmailEmail:
+    """Represents a Gmail email with all its metadata and content."""
+    id: str
+    thread_id: str
+    history_id: str
+    _internal_date: str  # Raw timestamp in milliseconds, use .date property instead
+    size_estimate: int
+    label_ids: List[str]
+    snippet: str
+    subject: Optional[str] = None
+    from_email: Optional[str] = None
+    to_email: Optional[str] = None
+    cc: Optional[str] = None
+    bcc: Optional[str] = None
+    message_id: Optional[str] = None
+    in_reply_to: Optional[str] = None
+    references: Optional[str] = None
+    delivered_to: Optional[str] = None
+    body_html: Optional[str] = None
+    body_plain: Optional[str] = None
+    body: Optional[str] = None  # For backward compatibility, will contain preferred version
+    mime_type: Optional[str] = None
+    attachments: Dict[str, GmailAttachment] = field(default_factory=dict)
+
+    @property
+    def date(self) -> datetime:
+        """
+        Get the email's receipt date as a datetime object.
+        This is when Gmail received the message, not when it was sent.
+        """
+        try:
+            # Convert milliseconds to seconds for datetime
+            timestamp = int(self._internal_date) / 1000
+            return datetime.fromtimestamp(timestamp)
+        except (ValueError, TypeError) as e:
+            logging.error(f"Error converting internal date: {str(e)}")
+            # Return epoch time if conversion fails
+            return datetime.fromtimestamp(0)
+
+    @classmethod
+    def from_api_response(cls, txt: dict) -> Optional['GmailEmail']:
+        """Create a GmailEmail instance from a Gmail API response."""
+        try:
+            payload = txt.get('payload', {})
+            
+            # Create email with required fields
+            email = cls._create_with_required_fields(txt)
+            
+            # Parse headers
+            cls._parse_headers(email, payload.get('headers', []))
+            
+            # Extract attachments from payload
+            email.attachments = cls._extract_attachments_from_payload(payload)
+
+            # Extract body
+            cls._extract_and_set_body(email, payload)
+            
+            return email
+            
+        except Exception as e:
+            logging.error(f"Error creating GmailEmail: {str(e)}")
+            logging.error(traceback.format_exc())
+            return None
+
+    @classmethod
+    def _create_with_required_fields(cls, txt: dict) -> 'GmailEmail':
+        """Create a GmailEmail instance with required fields from API response."""
+        return cls(
+            id=txt.get('id'),
+            thread_id=txt.get('threadId'),
+            history_id=txt.get('historyId'),
+            _internal_date=txt.get('internalDate'),
+            size_estimate=txt.get('sizeEstimate'),
+            label_ids=txt.get('labelIds', []),
+            snippet=txt.get('snippet'),
+            attachments={}
+        )
+
+    @staticmethod
+    def _parse_headers(email: 'GmailEmail', headers: List[dict]) -> None:
+        """Parse email headers and set corresponding fields."""
+        header_mapping = {
+            'subject': 'subject',
+            'from': 'from_email',
+            'to': 'to_email',
+            # 'date': 'date',
+            'cc': 'cc',
+            'bcc': 'bcc',
+            'message-id': 'message_id',
+            'in-reply-to': 'in_reply_to',
+            'references': 'references',
+            'delivered-to': 'delivered_to'
+        }
+        
+        for header in headers:
+            name = header.get('name', '').lower()
+            if name in header_mapping:
+                setattr(email, header_mapping[name], header.get('value', ''))
+
+    @classmethod
+    def _extract_attachments_from_payload(cls, payload: dict) -> Dict[str, 'GmailAttachment']:
+        """Extract attachment metadata from message payload and create GmailAttachment instances."""
+        attachments = {}
+        for part in payload.get("parts", []):
+            if "attachmentId" in part.get("body", {}):
+                attachment_id = part["body"]["attachmentId"]
+                part_id = part["partId"]
+                attachments[part_id] = GmailAttachment(
+                    filename=part.get("filename", ""),
+                    mime_type=part.get("mimeType", ""),
+                    attachment_id=attachment_id,
+                    part_id=part_id
+                )
+        return attachments
+
+    @classmethod
+    def _extract_and_set_body(cls, email: 'GmailEmail', payload: dict) -> None:
+        """Extract and set email body from payload."""
+        try:
+            # For single part text messages (plain or html)
+            if payload.get('mimeType') == 'text/plain':
+                email.body_plain = cls._decode_body_data(payload.get('body', {}).get('data'))
+                email.body = email.body_plain
+                email.mime_type = 'text/plain'
+                return
+            elif payload.get('mimeType') == 'text/html':
+                email.body_html = cls._decode_body_data(payload.get('body', {}).get('data'))
+                email.body = email.body_html
+                email.mime_type = 'text/html'
+                return
+            
+            # For multipart messages
+            if payload.get('mimeType', '').startswith('multipart/'):
+                parts = payload.get('parts', [])
+                
+                # Extract both versions when available
+                email.body_html = cls._find_text_html_body(parts)
+                email.body_plain = cls._find_text_plain_body(parts)
+                
+                # For multipart/alternative, prefer HTML for the main body
+                if payload.get('mimeType') == 'multipart/alternative':
+                    email.body = (
+                        email.body_html or      # Try HTML first
+                        email.body_plain or     # Then plain text
+                        cls._find_nested_body(parts) or  # Then nested
+                        cls._find_fallback_body(parts)   # Finally fallback
+                    )
+                else:
+                    # For other multipart types, prefer plain text
+                    email.body = (
+                        email.body_plain or
+                        email.body_html or
+                        cls._find_nested_body(parts) or
+                        cls._find_fallback_body(parts)
+                    )
+                
+                if email.body:
+                    # Set mime_type based on which version we're using as the main body
+                    if email.body == email.body_html:
+                        email.mime_type = 'text/html'
+                    elif email.body == email.body_plain:
+                        email.mime_type = 'text/plain'
+                    else:
+                        email.mime_type = payload.get('mimeType')
+                    
+        except Exception as e:
+            logging.error(f"Error extracting body: {str(e)}")
+            logging.error(traceback.format_exc())
+
+    @classmethod
+    def _find_text_plain_body(cls, parts: List[dict]) -> Optional[str]:
+        """Find and decode text/plain body from message parts."""
+        for part in parts:
+            if part.get('mimeType') == 'text/plain':
+                body = cls._decode_body_data(part.get('body', {}).get('data'))
+                if body:
+                    return body
+        return None
+
+    @classmethod
+    def _find_text_html_body(cls, parts: List[dict]) -> Optional[str]:
+        """Find and decode text/html body from message parts."""
+        for part in parts:
+            if part.get('mimeType') == 'text/html':
+                body = cls._decode_body_data(part.get('body', {}).get('data'))
+                if body:
+                    return body
+        return None
+
+    @classmethod
+    def _find_nested_body(cls, parts: List[dict]) -> Optional[str]:
+        """Find body in nested multipart structures."""
+        for part in parts:
+            if part.get('mimeType', '').startswith('multipart/'):
+                body = cls._extract_nested_body(part)
+                if body:
+                    return body
+        return None
+
+    @classmethod
+    def _find_fallback_body(cls, parts: List[dict]) -> Optional[str]:
+        """Try to get body from the first part as fallback."""
+        if parts and 'body' in parts[0] and 'data' in parts[0]['body']:
+            return cls._decode_body_data(parts[0]['body']['data'])
+        return None
+
+    @staticmethod
+    def _decode_body_data(data: Optional[str]) -> Optional[str]:
+        """Decode base64 encoded body data."""
+        if data:
+            try:
+                return base64.urlsafe_b64decode(data).decode('utf-8')
+            except Exception as e:
+                logging.error(f"Error decoding body data: {str(e)}")
+        return None
+
+    @classmethod
+    def _extract_nested_body(cls, payload: dict) -> Optional[str]:
+        """Helper method to extract body from nested multipart structures."""
+        try:
+            # For single part text messages (plain or html)
+            if payload.get('mimeType') in ['text/plain', 'text/html']:
+                return cls._decode_body_data(payload.get('body', {}).get('data'))
+            
+            # For multipart messages
+            if payload.get('mimeType', '').startswith('multipart/'):
+                parts = payload.get('parts', [])
+                return (
+                    cls._find_text_plain_body(parts) or
+                    cls._find_text_html_body(parts) or
+                    cls._find_nested_body(parts)
+                )
+
+            return None
+            
+        except Exception as e:
+            logging.error(f"Error extracting nested body: {str(e)}")
+            return None
 
 class GmailService():
     def __init__(self, user_id: str):
@@ -14,124 +263,9 @@ class GmailService():
             raise RuntimeError("No Oauth2 credentials stored")
         self.service = build('gmail', 'v1', credentials=credentials)
 
-    def _parse_message(self, txt, parse_body=False) -> dict | None:
+    def _query_emails_raw(self, query=None, max_results=100) -> List[dict]:
         """
-        Parse a Gmail message into a structured format.
-        
-        Args:
-            txt (dict): Raw message from Gmail API
-            parse_body (bool): Whether to parse and include the message body (default: False)
-        
-        Returns:
-            dict: Parsed message containing comprehensive metadata
-            None: If parsing fails
-        """
-        try:
-            message_id = txt.get('id')
-            thread_id = txt.get('threadId')
-            payload = txt.get('payload', {})
-            headers = payload.get('headers', [])
-
-            metadata = {
-                'id': message_id,
-                'threadId': thread_id,
-                'historyId': txt.get('historyId'),
-                'internalDate': txt.get('internalDate'),
-                'sizeEstimate': txt.get('sizeEstimate'),
-                'labelIds': txt.get('labelIds', []),
-                'snippet': txt.get('snippet'),
-            }
-
-            for header in headers:
-                name = header.get('name', '').lower()
-                value = header.get('value', '')
-                
-                if name == 'subject':
-                    metadata['subject'] = value
-                elif name == 'from':
-                    metadata['from'] = value
-                elif name == 'to':
-                    metadata['to'] = value
-                elif name == 'date':
-                    metadata['date'] = value
-                elif name == 'cc':
-                    metadata['cc'] = value
-                elif name == 'bcc':
-                    metadata['bcc'] = value
-                elif name == 'message-id':
-                    metadata['message_id'] = value
-                elif name == 'in-reply-to':
-                    metadata['in_reply_to'] = value
-                elif name == 'references':
-                    metadata['references'] = value
-                elif name == 'delivered-to':
-                    metadata['delivered_to'] = value
-
-            if parse_body:
-                body = self._extract_body(payload)
-                if body:
-                    metadata['body'] = body
-
-                metadata['mimeType'] = payload.get('mimeType')
-
-            return metadata
-
-        except Exception as e:
-            logging.error(f"Error parsing message: {str(e)}")
-            logging.error(traceback.format_exc())
-            return None
-
-    def _extract_body(self, payload) -> str | None:
-        """
-        Extract the email body from the payload.
-        Handles text/plain, text/html and multipart messages, including nested multiparts.
-        """
-        try:
-            # For single part text messages (plain or html)
-            if payload.get('mimeType') in ['text/plain', 'text/html']:
-                data = payload.get('body', {}).get('data')
-                if data:
-                    return base64.urlsafe_b64decode(data).decode('utf-8')
-            
-            # For multipart messages (both alternative and related)
-            if payload.get('mimeType', '').startswith('multipart/'):
-                parts = payload.get('parts', [])
-                
-                # First try to find a direct text/plain part
-                for part in parts:
-                    if part.get('mimeType') == 'text/plain':
-                        data = part.get('body', {}).get('data')
-                        if data:
-                            return base64.urlsafe_b64decode(data).decode('utf-8')
-                
-                # If no text/plain found, try text/html
-                for part in parts:
-                    if part.get('mimeType') == 'text/html':
-                        data = part.get('body', {}).get('data')
-                        if data:
-                            return base64.urlsafe_b64decode(data).decode('utf-8')
-                
-                # If still no body found, recursively check nested multipart structures
-                for part in parts:
-                    if part.get('mimeType', '').startswith('multipart/'):
-                        nested_body = self._extract_body(part)
-                        if nested_body:
-                            return nested_body
-                            
-                # If still no body found, try the first part as fallback
-                if parts and 'body' in parts[0] and 'data' in parts[0]['body']:
-                    data = parts[0]['body']['data']
-                    return base64.urlsafe_b64decode(data).decode('utf-8')
-
-            return None
-
-        except Exception as e:
-            logging.error(f"Error extracting body: {str(e)}")
-            return None
-
-    def query_emails(self, query=None, max_results=100):
-        """
-        Query emails from Gmail based on a search query.
+        Query emails from Gmail and return raw API responses.
         
         Args:
             query (str, optional): Gmail search query (e.g., 'is:unread', 'from:example@gmail.com')
@@ -139,7 +273,7 @@ class GmailService():
             max_results (int): Maximum number of emails to retrieve (1-500, default: 100)
         
         Returns:
-            list: List of parsed email messages, newest first
+            List[dict]: List of raw Gmail API message responses
         """
         try:
             # Ensure max_results is within API limits
@@ -153,7 +287,7 @@ class GmailService():
             ).execute()
 
             messages = result.get('messages', [])
-            parsed = []
+            raw_messages = []
 
             # Fetch full message details for each message
             for msg in messages:
@@ -161,27 +295,45 @@ class GmailService():
                     userId='me', 
                     id=msg['id']
                 ).execute()
-                parsed_message = self._parse_message(txt=txt, parse_body=False)
-                if parsed_message:
-                    parsed.append(parsed_message)
+                
+                raw_messages.append(txt)
                     
-            return parsed
+            return raw_messages
             
         except Exception as e:
-            logging.error(f"Error reading emails: {str(e)}")
+            logging.error(f"Error reading raw emails: {str(e)}")
             logging.error(traceback.format_exc())
             return []
-        
-    def get_email_by_id_with_attachments(self, email_id: str) -> Tuple[dict, dict] | Tuple[None, dict]:
+
+    def query_emails(self, query=None, max_results=100) -> List[GmailEmail]:
         """
-        Fetch and parse a complete email message by its ID including attachment IDs.
+        Query emails from Gmail based on a search query.
+        
+        Args:
+            query (str, optional): Gmail search query (e.g., 'is:unread', 'from:example@gmail.com')
+                                If None, returns all emails
+            max_results (int): Maximum number of emails to retrieve (1-500, default: 100)
+        
+        Returns:
+            List[GmailEmail]: List of parsed email messages, newest first
+        """
+        raw_messages = self._query_emails_raw(query=query, max_results=max_results)
+        return [
+            parsed_message 
+            for msg in raw_messages
+            if (parsed_message := GmailEmail.from_api_response(msg)) is not None
+        ]
+        
+    def get_email_by_id(self, email_id: str) -> GmailEmail | None:
+        """
+        Fetch and parse a complete email message by its ID.
         
         Args:
             email_id (str): The Gmail message ID to retrieve
         
         Returns:
-            Tuple[dict, list]: Complete parsed email message including body and list of attachment IDs
-            Tuple[None, list]: If retrieval or parsing fails, returns None for email and empty list for attachment IDs
+            GmailEmail: Complete parsed email message including body and attachments
+            None: If retrieval or parsing fails
         """
         try:
             # Fetch the complete message by ID
@@ -189,35 +341,16 @@ class GmailService():
                 userId='me',
                 id=email_id
             ).execute()
-            
-            # Parse the message with body included
-            parsed_email = self._parse_message(txt=message, parse_body=True)
 
-            if parsed_email is None:
-                return None, []
-
-            attachments = {}
-            for part in message["payload"].get("parts", []):
-                if "attachmentId" in part["body"]:
-                    attachment_id = part["body"]["attachmentId"]
-                    part_id = part["partId"]
-                    attachment = {
-                        "filename": part["filename"],
-                        "mimeType": part["mimeType"],
-                        "attachmentId": attachment_id,
-                        "partId": part_id
-                    }
-                    attachments[part_id] = attachment
-
-
-            return parsed_email, attachments
+            # Parse the message
+            return GmailEmail.from_api_response(message)
             
         except Exception as e:
             logging.error(f"Error retrieving email {email_id}: {str(e)}")
             logging.error(traceback.format_exc())
-            return None, []
+            return None
         
-    def create_draft(self, to: str, subject: str, body: str, cc: list[str] | None = None) -> dict | None:
+    def create_draft(self, to: str, subject: str, body: str, cc: list[str] | None = None) -> GmailEmail | None:
         """
         Create a draft email message.
         
@@ -228,7 +361,7 @@ class GmailService():
             cc (list[str], optional): List of email addresses to CC
             
         Returns:
-            dict: Draft message data including the draft ID if successful
+            GmailEmail: Draft message data if successful
             None: If creation fails
         """
         try:
@@ -261,7 +394,10 @@ class GmailService():
                 }
             ).execute()
             
-            return draft
+            # Parse the draft message into a GmailEmail object
+            if draft and 'message' in draft:
+                return GmailEmail.from_api_response(draft['message'])
+            return None
             
         except Exception as e:
             logging.error(f"Error creating draft: {str(e)}")
@@ -290,33 +426,32 @@ class GmailService():
             logging.error(traceback.format_exc())
             return False
         
-    def create_reply(self, original_message: dict, reply_body: str, send: bool = False, cc: list[str] | None = None) -> dict | None:
+    def create_reply(self, original_message: GmailEmail, reply_body: str, send: bool = False, cc: list[str] | None = None) -> GmailEmail | None:
         """
         Create a reply to an email message and either send it or save as draft.
         
         Args:
-            original_message (dict): The original message data (as returned by get_email_by_id)
+            original_message (GmailEmail): The original message data
             reply_body (str): Body content of the reply
             send (bool): If True, sends the reply immediately. If False, saves as draft.
             cc (list[str], optional): List of email addresses to CC
             
         Returns:
-            dict: Sent message or draft data if successful
+            GmailEmail: Sent message or draft data if successful
             None: If operation fails
         """
         try:
-            to_address = original_message.get('from')
+            to_address = original_message.from_email
             if not to_address:
                 raise ValueError("Could not determine original sender's address")
             
-            subject = original_message.get('subject', '')
+            subject = original_message.subject or ''
             if not subject.lower().startswith('re:'):
                 subject = f"Re: {subject}"
 
-
-            original_date = original_message.get('date', '')
-            original_from = original_message.get('from', '')
-            original_body = original_message.get('body', '')
+            original_date = original_message.date or ''
+            original_from = original_message.from_email or ''
+            original_body = original_message.body or ''
         
             full_reply_body = (
                 f"{reply_body}\n\n"
@@ -330,14 +465,14 @@ class GmailService():
             if cc:
                 mime_message['cc'] = ','.join(cc)
                 
-            mime_message['In-Reply-To'] = original_message.get('id', '')
-            mime_message['References'] = original_message.get('id', '')
+            mime_message['In-Reply-To'] = original_message.id
+            mime_message['References'] = original_message.id
             
             raw_message = base64.urlsafe_b64encode(mime_message.as_bytes()).decode('utf-8')
             
             message_body = {
                 'raw': raw_message,
-                'threadId': original_message.get('threadId')  # Ensure it's added to the same thread
+                'threadId': original_message.thread_id  # Ensure it's added to the same thread
             }
 
             if send:
@@ -355,13 +490,18 @@ class GmailService():
                     }
                 ).execute()
             
-            return result
+            # Parse the result into a GmailEmail object
+            if result:
+                if not send:
+                    result = result.get('message', {})
+                return GmailEmail.from_api_response(result)
+            return None
             
         except Exception as e:
             logging.error(f"Error {'sending' if send else 'drafting'} reply: {str(e)}")
             logging.error(traceback.format_exc())
             return None
-        
+
     def get_attachment(self, message_id: str, attachment_id: str) -> dict | None:
         """
         Retrieves a Gmail attachment by its ID.

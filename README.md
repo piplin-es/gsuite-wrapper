@@ -1,107 +1,50 @@
-# mcp-gsuite MCP server
 
-[![smithery badge](https://smithery.ai/badge/mcp-gsuite)](https://smithery.ai/server/mcp-gsuite)
-MCP server to interact with Google produts.
+# GSuite Integration Library
 
-## Example prompts
+This project is a fork of [mcp-gsuite](https://github.com/MarkusPfundstein/mcp-gsuite) that has been extensively rewritten to remove MCP bindings and provide a more streamlined, pure Python interface for Google Workspace (GSuite) services.
 
-Right now, this MCP server supports Gmail, Calendar, and Google Analytics integration with the following capabilities:
+## Features
 
-1. General
-* Multiple google accounts
+### Gmail Integration
+- Search and query emails with flexible filters
+- Retrieve complete email content with attachments
+- Create and manage draft emails
+- Reply to existing emails
+- Handle email attachments efficiently
+- Support for HTML and plain text email bodies
 
-2. Gmail
-* Get your Gmail user information
-* Query emails with flexible search (e.g., unread, from specific senders, date ranges, with attachments)
-* Retrieve complete email content by ID
-* Create new draft emails with recipients, subject, body and CC options
-* Delete draft emails
-* Reply to existing emails (can either send immediately or save as draft)
-* Retrieve multiple emails at once by their IDs.
-* Save multiple attachments from emails to your local system.
+### Google Analytics Integration
+- Access Google Analytics 4 data
+- Generate various report types (URLs, Pages, Referrers)
+- Custom metrics and dimensions support
+- Flexible date range queries
+- Export data to JSON format
 
-3. Calendar
-* Manage multiple calendars
-* Get calendar events within specified time ranges
-* Create calendar events with:
-  + Title, start/end times
-  + Optional location and description
-  + Optional attendees
-  + Custom timezone support
-  + Notification preferences
-* Delete calendar events
+### Multi-Account Management
+- Support for multiple Google accounts
+- OAuth2 authentication handling
+- Account type categorization
+- Custom metadata for accounts
+- Secure credential storage
 
-4. Google Analytics
-* List all Google Analytics properties accessible by the user
-* Run reports on Google Analytics data with:
-  + Support for various metrics (activeUsers, totalUsers, newUsers, etc.)
-  + Support for various dimensions (date, deviceCategory, country, etc.)
-  + Customizable date ranges
-  + Flexible data limits
-
-Example prompts you can try:
-
-* Retrieve my latest unread messages
-* Search my emails from the Scrum Master
-* Retrieve all emails from accounting
-* Take the email about ABC and summarize it
-* Write a nice response to Alice's last email and upload a draft.
-* Reply to Bob's email with a Thank you note. Store it as draft
-
-* What do I have on my agenda tomorrow?
-* Check my private account's Family agenda for next week
-* I need to plan an event with Tim for 2hrs next week. Suggest some time slots.
-
-* List all my Google Analytics properties
-* Get the number of active users for my website over the last 30 days
-* Show me the top countries where my users are coming from
-* Compare page views across different sections of my website
-
-## Quickstart
-
-### Install
-
-### Installing via Smithery
-
-To install mcp-gsuite for Claude Desktop automatically via [Smithery](https://smithery.ai/server/mcp-gsuite):
+## Installation
 
 ```bash
-npx -y @smithery/cli install mcp-gsuite --client claude
+pip install .
 ```
 
-#### Oauth 2
+## Configuration
 
-Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps to set up authentication:
+1. Create OAuth2 credentials in Google Cloud Console with required scopes:
+   - Gmail: `https://mail.google.com/`
+   - Analytics: `https://www.googleapis.com/auth/analytics.readonly`
 
-1. Create OAuth2 Credentials:
-   - Go to the [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a new project or select an existing one
-   - Enable the Gmail API, Google Calendar API, and Google Analytics Data API for your project
-   - Go to "Credentials" → "Create Credentials" → "OAuth client ID"
-   - Select "Desktop app" or "Web application" as the application type
-   - Configure the OAuth consent screen with required information
-   - Add authorized redirect URIs (include `http://localhost:4100/code` for local development)
-
-2. Required OAuth2 Scopes:
-   
-
-```json
-   [
-     "openid",
-     "https://mail.google.com/",
-     "https://www.googleapis.com/auth/calendar",
-     "https://www.googleapis.com/auth/userinfo.email",
-     "https://www.googleapis.com/auth/analytics.readonly"
-   ]
-```
-
-3. Then create a `.gauth.json` in your working directory with client
-
+2. Create `.gauth.json` in your working directory:
 ```json
 {
     "web": {
-        "client_id": "$your_client_id",
-        "client_secret": "$your_client_secret",
+        "client_id": "your_client_id",
+        "client_secret": "your_client_secret",
         "redirect_uris": ["http://localhost:4100/code"],
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token"
@@ -109,161 +52,95 @@ Google Workspace (G Suite) APIs require OAuth2 authorization. Follow these steps
 }
 ```
 
-4. Create a `.accounts.json` file with account information
-
+3. Create `.accounts.json` to manage your accounts:
 ```json
 {
     "accounts": [
         {
-            "email": "alice@bob.com",
+            "email": "your.email@example.com",
             "account_type": "personal",
-            "extra_info": "Additional info that you want to tell Claude: E.g. 'Contains Family Calendar'"
+            "extra_info": "Optional additional information about the account"
         }
     ]
 }
 ```
 
-You can specifiy multiple accounts. Make sure they have access in your Google Auth app. The `extra_info` field is especially interesting as you can add info here that you want to tell the AI about the account (e.g. whether it has a specific agenda)
+## Usage Examples
 
-Note: When you first execute one of the tools for a specific account, a browser will open, redirect you to Google and ask for your credentials, scope, etc. After a successful login, it stores the credentials in a local file called `.oauth.{email}.json` . Once you are authorized, the refresh token will be used.
+### Gmail
 
-#### Claude Desktop
+```python
+from mcp_gsuite.gmail import GmailService
 
-On MacOS: `~/Library/Application\ Support/Claude/claude_desktop_config.json`
+# Initialize service
+gmail = GmailService(user_id='your.email@example.com')
 
-On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
-
-<details>
-  <summary>Development/Unpublished Servers Configuration</summary>
-  
-
-```json
-{
-  "mcpServers": {
-    "mcp-gsuite": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "<dir_to>/mcp-gsuite",
-        "run",
-        "mcp-gsuite"
-      ]
-    }
-  }
-}
+# Query unread emails
+emails = gmail.query_emails(query='is:unread', max_results=10)
+for email in emails:
+    print(f"Subject: {email.subject}")
+    print(f"From: {email.from_email}")
 ```
 
+### Google Analytics
 
-Note: You can also use the `uv run mcp-gsuite --accounts-file /path/to/custom/.accounts.json` to specify a different accounts file or `--credentials-dir /path/to/custom/credentials` to specify a different credentials directory.
+```python
+from mcp_gsuite.analytics import check_analytics_data
 
-```json
-{
-  "mcpServers": {
-    "mcp-gsuite": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "<dir_to>/mcp-gsuite",
-        "run",
-        "mcp-gsuite",
-        "--accounts-file",
-        "/path/to/custom/.accounts.json",
-        "--credentials-dir",
-        "/path/to/custom/credentials"
-      ]
-    }
-  }
-}
+# Get page views report
+check_analytics_data(
+    user_id="your.email@example.com",
+    property_id="your_property_id",
+    report_type="pages"
+)
 ```
 
-</details>
+### Account Management
 
-<details>
-  <summary>Published Servers Configuration</summary>
-  
+```python
+from mcp_gsuite.account_manager import GoogleAccountManager
 
-```json
-{
-  "mcpServers": {
-    "mcp-gsuite": {
-      "command": "uvx",
-      "args": [
-        "mcp-gsuite",
-        "--accounts-file",
-        "/path/to/custom/.accounts.json",
-        "--credentials-dir",
-        "/path/to/custom/credentials"
-      ]
-    }
-  }
-}
+manager = GoogleAccountManager()
+
+# Add new account
+account = manager.setup_new_account(
+    "your.email@example.com",
+    extra_info="Primary account for analytics"
+)
+
+# List accounts
+accounts = manager.list_accounts()
+for account in accounts:
+    print(f"Email: {account.email}, Type: {account.account_type}")
 ```
 
-</details>
+## Error Handling
 
-### Configuration Options
+The library includes comprehensive error handling and logging. All methods return `None` on failure and log appropriate error messages:
 
-The MCP server can be configured with several command-line options to specify custom paths for authentication and account information:
-
-* `--gauth-file`: Specifies the path to the `.gauth.json` file containing OAuth2 client configuration. Default is `./.gauth.json`.
-* `--accounts-file`: Specifies the path to the `.accounts.json` file containing information about the Google accounts. Default is `./.accounts.json`.
-* `--credentials-dir`: Specifies the directory where OAuth credentials are stored after successful authentication. Default is the current working directory with a subdirectory for each account as `.oauth.{email}.json`.
-
-These options allow for flexibility in managing different environments or multiple sets of credentials and accounts, especially useful in development and testing scenarios.
-
-Example usage:
-
-```bash
-uv run mcp-gsuite --gauth-file /path/to/custom/.gauth.json --accounts-file /path/to/custom/.accounts.json --credentials-dir /path/to/custom/credentials
+```python
+email = gmail.get_email_by_id('some_id')
+if email is None:
+    print("Failed to retrieve email")
+else:
+    print(f"Retrieved email: {email.subject}")
 ```
 
-This configuration is particularly useful when you have multiple instances of the server running with different configurations or when deploying to environments where the default paths are not suitable.
+## File Locations
 
-## Development
+- `.accounts.json`: Account information storage
+- `.oauth2.{email}.json`: OAuth credentials for each account
+- `.gauth.json`: OAuth client configuration
 
-### Building and Publishing
+These locations can be customized using environment variables:
+- `ACCOUNTS_FILE`: Path to accounts configuration
+- `CREDENTIALS_DIR`: OAuth credentials directory
+- `GAUTH_FILE`: OAuth client configuration path
 
-To prepare the package for distribution:
+## Contributing
 
-1. Sync dependencies and update lockfile:
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-```bash
-uv sync
-```
+## License
 
-2. Build package distributions:
-
-```bash
-uv build
-```
-
-This will create source and wheel distributions in the `dist/` directory.
-
-3. Publish to PyPI:
-
-```bash
-uv publish
-```
-
-Note: You'll need to set PyPI credentials via environment variables or command flags:
-* Token: `--token` or `UV_PUBLISH_TOKEN`
-* Or username/password: `--username`/`UV_PUBLISH_USERNAME` and `--password`/`UV_PUBLISH_PASSWORD`
-
-### Debugging
-
-Since MCP servers run over stdio, debugging can be challenging. For the best debugging
-experience, we strongly recommend using the [MCP Inspector](https://github.com/modelcontextprotocol/inspector).
-
-You can launch the MCP Inspector via [ `npm` ](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) with this command:
-
-```bash
-npx @modelcontextprotocol/inspector uv --directory /path/to/mcp-gsuite run mcp-gsuite
-```
-
-Upon launching, the Inspector will display a URL that you can access in your browser to begin debugging.
-
-You can also watch the server logs with this command:
-
-```bash
-tail -n 20 -f ~/Library/Logs/Claude/mcp-server-mcp-gsuite.log
-```
+This project is licensed under the MIT License - see the LICENSE file for details. 
