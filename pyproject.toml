@@ -1,6 +1,6 @@
 [project]
 name = "mcp-gsuite"
-version = "0.4.14"
+version = "0.4.15"
 description = "Google Workspace API Wrapper"
 authors = [
     { name = "Gleb Reutov", email = "glebreutov@gmail.com" }
