@@ -11,6 +11,8 @@ from mcp_gsuite.account_manager import GoogleAccountManager
 manager = GoogleAccountManager()
 ```
 
+This documentation focuses on REPL usage, which provides better control over the OAuth flow and account management process.
+
 ## Listing Accounts
 
 To see all configured Google accounts:
@@ -25,31 +27,86 @@ for account in accounts:
 
 ## Adding a New Account
 
-To add a new Google account, use the `setup_new_account` method. This will:
-1. Open your browser for Google OAuth authorization
-2. Handle the callback automatically
-3. Save the account credentials
-
-You can provide additional context about the account using the `extra_info` parameter. This is useful for storing information about:
-- Email usage patterns (e.g., "Primary support email", "Marketing communications")
-- Main email languages (e.g., "Primary language: English")
-- Gmail labels or categories (e.g., "Uses labels: Support, Marketing")
-- Any other contextual information that helps identify the account's purpose
+In a REPL environment, you can add a new Google account using a two-step process that gives you more control over the OAuth flow:
 
 ```python
+from mcp_gsuite.account_manager import GoogleAccountManager
+manager = GoogleAccountManager()
+
+# Step 1: Get the authorization URL
+email = "user@example.com"
+auth_url = manager.get_authorization_url_for_new_account(email)
+print(f"Please visit this URL in your browser: {auth_url}")
+
+# Step 2: After you've opened the URL, wait for the OAuth callback
 try:
-    # Basic account setup
-    account = manager.setup_new_account("user@example.com")
-    
-    # Or with extra information
-    account = manager.setup_new_account(
-        "support@example.com",
-        extra_info="Primary support email, English language, Uses labels: Support, Urgent"
-    )
+    # Default timeout is 5 minutes (300 seconds)
+    account = manager.wait_for_oauth_callback(email)
     print(f"Successfully added account: {account.email}")
 except ValueError as e:
     print(f"Failed to add account: {e}")
 ```
+
+This split approach is particularly useful in REPL environments because it:
+- Allows you to get the URL first and ensure it's valid
+- Gives you time to open the URL in your browser
+- Lets you start the callback server only when you're ready
+- Provides better control over the flow and error handling
+
+The process works as follows:
+1. Call `get_authorization_url_for_new_account()` to get the Google OAuth URL
+2. Open the URL in your browser
+3. When ready to proceed, call `wait_for_oauth_callback()` to start the temporary server
+4. Complete the Google OAuth flow in your browser
+5. The callback will be automatically handled and the account will be set up
+
+### Error Handling and Troubleshooting
+
+Here are common scenarios you might encounter and how to handle them:
+
+1. **Account Already Exists**
+   ```python
+   try:
+       account = manager.wait_for_oauth_callback("existing@example.com")
+   except ValueError as e:
+       if "already exists" in str(e):
+           # Remove the existing account first
+           manager.remove_account("existing@example.com")
+           # Get a new authorization URL and try again
+           auth_url = manager.get_authorization_url_for_new_account("existing@example.com")
+           print(f"Please visit: {auth_url}")
+           account = manager.wait_for_oauth_callback("existing@example.com")
+   ```
+
+2. **Authorization Timeout**
+   ```python
+   try:
+       # You can adjust the timeout if needed (e.g., 10 minutes)
+       account = manager.wait_for_oauth_callback("user@example.com", timeout=600)
+   except ValueError as e:
+       if "Failed to get authorization code" in str(e):
+           print("Authorization timed out. Please try again with a fresh URL:")
+           auth_url = manager.get_authorization_url_for_new_account("user@example.com")
+           print(f"New URL: {auth_url}")
+   ```
+
+3. **Network or Server Issues**
+   ```python
+   try:
+       account = manager.wait_for_oauth_callback("user@example.com")
+   except Exception as e:
+       print("Server or network error. Make sure:")
+       print("- Port 8080 is available")
+       print("- Your browser can access localhost:8080")
+       print("- You have a working internet connection")
+   ```
+
+### Important Considerations
+
+- **Authorization URLs**: Always use a fresh URL if the previous attempt failed
+- **Timeouts**: Default timeout is 5 minutes, but you can adjust it using the `timeout` parameter
+- **Port Usage**: The callback server requires port 8080 to be available
+- **Credentials**: Make sure you have proper permissions for storing credentials
 
 ## Removing an Account
 
@@ -95,7 +152,7 @@ Here's a complete example showing how to manage an account with proper error han
 ```python
 from mcp_gsuite.account_manager import GoogleAccountManager
 
-def manage_account(email: str, extra_info: str = ""):
+def manage_account(email: str):
     manager = GoogleAccountManager()
     
     # Check if account exists
@@ -104,12 +161,16 @@ def manage_account(email: str, extra_info: str = ""):
         return
     
     try:
-        # Add new account
-        print(f"Setting up account for {email}...")
-        account = manager.setup_new_account(email, extra_info=extra_info)
+        # Step 1: Get authorization URL
+        print(f"Getting authorization URL for {email}...")
+        auth_url = manager.get_authorization_url_for_new_account(email)
+        print(f"\nPlease visit this URL in your browser:")
+        print(f"{auth_url}\n")
+        
+        # Step 2: Wait for callback
+        print("Waiting for OAuth callback (timeout: 5 minutes)...")
+        account = manager.wait_for_oauth_callback(email)
         print(f"Successfully added account: {account.email}")
-        if extra_info:
-            print(f"Extra info: {account.extra_info}")
         
         # Verify authorization
         if manager.is_account_authorized(email):
@@ -123,77 +184,19 @@ def manage_account(email: str, extra_info: str = ""):
         print(f"Unexpected error: {e}")
 
 # Usage example
-manage_account(
-    "support@example.com",
-    extra_info="Primary support email, English language, Uses labels: Support, Urgent"
-)
+manage_account("support@example.com")
 ```
-
-## Common Error Handling
-
-When working with the account manager, you might encounter these common errors and their solutions:
-
-1. **ValueError: "Account with email {email} already exists"**
-   ```python
-   try:
-       account = manager.setup_new_account("existing@example.com")
-   except ValueError as e:
-       print(f"Error: {e}")
-       # Remove the existing account first
-       manager.remove_account("existing@example.com")
-       # Try again
-       account = manager.setup_new_account("existing@example.com")
-   ```
-
-2. **ValueError: "Failed to get authorization code from callback"**
-   ```python
-   try:
-       account = manager.setup_new_account("user@example.com")
-   except ValueError as e:
-       if "Failed to get authorization code" in str(e):
-           print("Authorization timed out or failed. Please try again.")
-           print("Make sure you completed the authorization in your browser.")
-   ```
-
-3. **ValueError: "Failed to complete account setup"**
-   ```python
-   try:
-       account = manager.setup_new_account("user@example.com")
-   except ValueError as e:
-       if "Failed to complete account setup" in str(e):
-           print("OAuth flow failed. Check your credentials and permissions.")
-           print("Make sure you have the correct OAuth scopes configured.")
-   ```
-
-## Troubleshooting
-
-1. **Authorization Fails**
-   - Make sure you're using the correct Google account
-   - Check if you have the necessary permissions
-   - Verify that the OAuth client is properly configured
-
-2. **Account Already Exists**
-   - Use `remove_account()` to remove the existing account first
-   - Then try adding the account again
-
-3. **Callback Issues**
-   - Ensure port 8080 is available
-   - Check if your browser can access localhost:8080
-   - The callback server will timeout after 5 minutes (300 seconds)
-
-4. **Credentials Issues**
-   - Check if the credentials directory is writable
-   - Verify that the `.gauth.json` file is properly configured
-   - Make sure you have the required OAuth scopes
 
 ## File Locations
 
 The account manager uses several files:
-- `.accounts.json`: Stores account information
-- `.oauth2.{email}.json`: Stores OAuth credentials for each account
-- `.gauth.json`: Contains OAuth client configuration
+- `.accounts.json`: Stores basic account information (email, type, extra info)
+- `.oauth2.{email}.json`: Stores OAuth credentials for each account (created during authorization)
+- `.gauth.json`: Contains OAuth client configuration (required for authorization)
 
-These files can be configured using environment variables:
+These files are managed automatically by the account manager. Their locations can be configured using environment variables:
 - `ACCOUNTS_FILE`: Path to accounts configuration file
-- `CREDENTIALS_DIR`: Directory for OAuth credentials
-- `GAUTH_FILE`: Path to OAuth client configuration 
+- `CREDENTIALS_DIR`: Directory for storing OAuth credentials
+- `GAUTH_FILE`: Path to OAuth client configuration file
+
+Note: Make sure these files and directories have appropriate read/write permissions for your application. 

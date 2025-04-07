@@ -170,14 +170,13 @@ class GoogleAccountManager:
         finally:
             server.server_close()
     
-    def setup_new_account(self, email: str, timeout: int = 300) -> AccountInfo:
-        """Complete the OAuth flow for a new account.
+    def wait_for_oauth_callback(self, email: str, timeout: int = 300) -> AccountInfo:
+        """Wait for OAuth callback and complete account setup.
         
         This method will:
-        1. Get the authorization URL
-        2. Start a temporary HTTP server to handle the callback
-        3. Open the authorization URL in the default browser
-        4. Wait for the callback and complete the account setup
+        1. Start a temporary HTTP server to handle the callback
+        2. Wait for the callback
+        3. Complete the account setup once callback is received
         
         Args:
             email: The email address of the account to authorize
@@ -191,13 +190,7 @@ class GoogleAccountManager:
         """
         if self.get_account(email):
             raise ValueError(f"Account with email {email} already exists")
-        
-        # Get the authorization URL
-        auth_url = self.get_authorization_url_for_new_account(email)
-        print(f"\nPlease visit this URL to authorize the account:")
-        print(f"{auth_url}\n")
-        
-        # Handle the OAuth callback
+            
         try:
             code, state = self._handle_oauth_callback(timeout)
             if not code or not state:
